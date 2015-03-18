@@ -21,14 +21,46 @@
 
 
 // Own header
-#include "bottomcamsearch.h"
+#include "modules/computer_vision/bottomcamsearch.h"
 
 // UDP RTP Images
-#include "udp/socket.h"
+#include "modules/computer_vision/lib/udp/socket.h"
 
 // Threaded computer vision
 #include <pthread.h>
 
+// Default broadcast IP
+#ifndef VIDEO_SOCK_IP
+#define VIDEO_SOCK_IP "192.168.1.255"
+#endif
+
+// Output socket can be defined from an offset
+#ifdef VIDEO_SOCK_OUT_OFFSET
+#define VIDEO_SOCK_OUT (5000+VIDEO_SOCK_OUT_OFFSET)
+#endif
+
+#ifndef VIDEO_SOCK_OUT
+#define VIDEO_SOCK_OUT 5000
+#endif
+
+#ifndef VIDEO_SOCK_IN
+#define VIDEO_SOCK_IN 4999
+#endif
+
+// Downsize factor for video stream
+#ifndef VIDEO_DOWNSIZE_FACTOR
+#define VIDEO_DOWNSIZE_FACTOR 4
+#endif
+
+// From 0 to 99 (99=high)
+#ifndef VIDEO_QUALITY_FACTOR
+#define VIDEO_QUALITY_FACTOR 50
+#endif
+
+// Frame Per Seconds
+#ifndef VIDEO_FPS
+#define VIDEO_FPS 4.
+#endif
 
 uint8_t color_lum_min = 105;
 uint8_t color_lum_max = 205;
@@ -42,17 +74,25 @@ int color_count = 0;
 void bottomcamsearch_run(void) {
 }
 
+// take shot flag
+int viewvideo_shot = 0;
+
+int viewvideo_save_shot(void);
+int viewvideo_save_shot(void)
+{
+  return 0;
+}
 
 /////////////////////////////////////////////////////////////////////////
 // COMPUTER VISION THREAD
 
 // Video
-#include "v4l/video.h"
-#include "resize.h"
-#include "color.h"
+#include "modules/computer_vision/lib/v4l/video.h"
+#include "modules/computer_vision/cv/resize.h"
+#include "modules/computer_vision/cv/color.h"
 
-#include "encoding/jpeg.h"
-#include "encoding/rtp.h"
+#include "modules/computer_vision/cv/encoding/jpeg.h"
+#include "modules/computer_vision/cv/encoding/rtp.h"
 
 #include <stdio.h>
 #include <string.h>
