@@ -1,0 +1,28 @@
+<!DOCTYPE module SYSTEM "module.dtd">
+
+<module name="BottomCamSearch" dir="computer_vision/BottomCamSearch">
+  <doc>
+    <description>Video ARDone 2 Bottom Camera Ground Search</description>
+  </doc>
+
+  <header>
+    <file name="bottomcamsearch.h"/>
+  </header>
+
+  <periodic fun="bottomcamsearch_run()" freq="1" start="bottomcamsearch_start()" stop="bottomcamsearch_stop()" autorun="TRUE"/>
+  <makefile target="ap">
+    <file name="bottomcamserach.c"/>
+    <file name="jpeg.c" dir="modules/computer_vision/cv/encoding"/>
+    <file name="rtp.c" dir="modules/computer_vision/cv/encoding"/>
+    <file name="socket.c" dir="modules/computer_vision/lib/udp"/>
+    <file name="video.c" dir="modules/computer_vision/lib/v4l"/>
+    <file name="ardrone2.c" dir="modules/computer_vision/lib/v4l"/>
+    <define name="modules/computer_vision/cv" type="include"/>
+    <define name="modules/computer_vision/lib" type="include"/>
+    <define name="pthread" type="raw"/>
+    <define name="__USE_GNU"/>
+    <flag name="LDFLAGS" value="pthread"/>
+    <flag name="LDFLAGS" value="lrt"/>
+    <flag name="LDFLAGS" value="static"/>
+  </makefile>
+</module>
