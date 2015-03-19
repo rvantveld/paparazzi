@@ -22,9 +22,20 @@
 
 // Own header
 #include "modules/computer_vision/obstacle_avoidance/obstacle_avoidance.h"
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/time.h>
 
 // UDP RTP Images
 #include "modules/computer_vision/lib/udp/socket.h"
+// Video
+#include "modules/computer_vision/lib/v4l/video.h"
+#include "modules/computer_vision/cv/resize.h"
+#include "modules/computer_vision/cv/color.h"
+
+#include "modules/computer_vision/cv/encoding/jpeg.h"
+#include "modules/computer_vision/cv/encoding/rtp.h"
 
 // Threaded computer vision
 #include <pthread.h>
@@ -74,28 +85,8 @@ int color_count = 0;
 void obstacle_avoidance_run(void) {
 }
 
-// take shot flag
-int viewvideo_shot = 0;
-
-int viewvideo_save_shot(void);
-int viewvideo_save_shot(void)
-{
-  return 0;
-}
-
 /////////////////////////////////////////////////////////////////////////
 // COMPUTER VISION THREAD
-
-// Video
-#include "modules/computer_vision/lib/v4l/video.h"
-#include "modules/computer_vision/cv/resize.h"
-#include "modules/computer_vision/cv/color.h"
-
-#include "modules/computer_vision/cv/encoding/jpeg.h"
-#include "modules/computer_vision/cv/encoding/rtp.h"
-
-#include <stdio.h>
-#include <string.h>
 
 pthread_t computervision_thread;
 volatile uint8_t computervision_thread_status = 0;
@@ -136,9 +127,19 @@ void *computervision_thread_main(void* data)
   struct UdpSocket* vsock;
   vsock = udp_socket(VIDEO_SOCK_IP, VIDEO_SOCK_OUT, VIDEO_SOCK_IN, FMS_BROADCAST);
 
-  while (computer_vision_thread_command > 0)
-  {
-    usleep(1000* millisleep);
+  // time
+  struct timeval last_time;
+  gettimeofday(&last_time, NULL);
+
+  while (computer_vision_thread_command > 0) {
+    // compute usleep to have a more stable frame rate
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    int dt = (int)(time.tv_sec - last_time.tv_sec) * 1000000 + (int)(time.tv_usec - last_time.tv_usec);
+    if (dt < microsleep) { usleep(microsleep - dt); }
+    last_time = time;
+
+    // Grab new frame
     video_grab_image(&vid, img_new);
 
     // Resize: device by 4
