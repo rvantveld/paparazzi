@@ -21,7 +21,7 @@
 
 
 // Own header
-#include "modules/computer_vision/bottomcamsearch.h"
+#include "modules/computer_vision/obstacle_avoidance/obstacle_avoidance.h"
 
 // UDP RTP Images
 #include "modules/computer_vision/lib/udp/socket.h"
@@ -44,12 +44,12 @@
 #endif
 
 #ifndef VIDEO_SOCK_IN
-#define VIDEO_SOCK_IN 4999
+#define VIDEO_SOCK_IN 5001
 #endif
 
 // Downsize factor for video stream
 #ifndef VIDEO_DOWNSIZE_FACTOR
-#define VIDEO_DOWNSIZE_FACTOR 4
+#define VIDEO_DOWNSIZE_FACTOR 2
 #endif
 
 // From 0 to 99 (99=high)
@@ -71,7 +71,7 @@ uint8_t color_cr_max  = 255;
 
 int color_count = 0;
 
-void bottomcamsearch_run(void) {
+void obstacle_avoidance_run(void) {
 }
 
 // take shot flag
@@ -119,14 +119,13 @@ void *computervision_thread_main(void* data)
   struct img_struct* img_new = video_create_image(&vid);
 
   // Video Resizing
-  #define DOWNSIZE_FACTOR   2
-  uint8_t quality_factor = 50; // From 0 to 99 (99=high)
+  uint8_t quality_factor = VIDEO_QUALITY_FACTOR; // From 0 to 99 (99=high)
   uint8_t dri_jpeg_header = 0;
-  int millisleep = 250;
+  int microsleep = (int)(1000000. / VIDEO_FPS);
 
   struct img_struct small;
-  small.w = vid.w / DOWNSIZE_FACTOR;
-  small.h = vid.h / DOWNSIZE_FACTOR;
+  small.w = vid.w / VIDEO_DOWNSIZE_FACTOR;
+  small.h = vid.h / VIDEO_DOWNSIZE_FACTOR;
   small.buf = (uint8_t*)malloc(small.w*small.h*2);
 
 
@@ -135,7 +134,7 @@ void *computervision_thread_main(void* data)
 
   // Network Transmit
   struct UdpSocket* vsock;
-  vsock = udp_socket("192.168.1.255", 5000, 5001, FMS_BROADCAST);
+  vsock = udp_socket(VIDEO_SOCK_IP, VIDEO_SOCK_OUT, VIDEO_SOCK_IN, FMS_BROADCAST);
 
   while (computer_vision_thread_command > 0)
   {
@@ -143,7 +142,7 @@ void *computervision_thread_main(void* data)
     video_grab_image(&vid, img_new);
 
     // Resize: device by 4
-    resize_uyuv(img_new, &small, DOWNSIZE_FACTOR);
+    resize_uyuv(img_new, &small, VIDEO_DOWNSIZE_FACTOR);
 
     color_count = colorfilt_uyvy(&small,&small,
         color_lum_min,color_lum_max,
@@ -169,8 +168,16 @@ void *computervision_thread_main(void* data)
         0,                // Format 422
         quality_factor,               // Jpeg-Quality
         dri_jpeg_header,                // DRI Header
-        0              // 90kHz time increment
+        1              // 90kHz time increment
      );
+    // Extra note: when the time increment is set to 0,
+    // it is automaticaly calculated by the send_rtp_frame function
+    // based on gettimeofday value. This seems to introduce some lag or jitter.
+    // An other way is to compute the time increment and set the correct value.
+    // It seems that a lower value is also working (when the frame is received
+    // the timestamp is always "late" so the frame is displayed immediately).
+    // Here, we set the time increment to the lowest possible value
+    // (1 = 1/90000 s) which is probably stupid but is actually working.
   }
   printf("Thread Closed\n");
   video_close(&vid);
@@ -178,7 +185,7 @@ void *computervision_thread_main(void* data)
   return 0;
 }
 
-void bottomcamsearch_start(void)
+void obstacle_avoidance_start(void)
 {
   computer_vision_thread_command = 1;
   int rc = pthread_create(&computervision_thread, NULL, computervision_thread_main, NULL);
@@ -187,7 +194,7 @@ void bottomcamsearch_start(void)
   }
 }
 
-void bottomcamsearch_stop(void)
+void obstacle_avoidance_stop(void)
 {
   computer_vision_thread_command = 0;
 }

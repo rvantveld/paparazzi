@@ -20,18 +20,18 @@
  */
 
 /**
- * @file bottomcamsearch.h
+ * @file obstacle_avoidance.h
  */
 
-#ifndef BOTTOM_CAM_SEARCH_H
-#define BOTTOM_CAM_SEARCH_H
+#ifndef OBSTACLE_AVOIDANCE_H
+#define OBSTACLE_AVOIDANCE_H
 
 #include <stdint.h>
 
 // Module functions
-extern void bottomcamsearch_run(void);
-extern void bottomcamsearch_start(void);
-extern void bottomcamsearch_stop(void);
+extern void obstacle_avoidance_run(void);
+extern void obstacle_avoidance_start(void);
+extern void obstacle_avoidance_stop(void);
 
 extern uint8_t color_lum_min;
 extern uint8_t color_lum_max;
@@ -44,4 +44,4 @@ extern uint8_t color_cr_max;
 
 extern int color_count;
 
-#endif /* BOTTOM_CAM_SEARCH_H */
+#endif /* OBSTACLE_AVOIDANCE_H */
