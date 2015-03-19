@@ -22,10 +22,10 @@
 
 // Own header
 #include "modules/computer_vision/obstacle_avoidance/obstacle_avoidance.h"
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/time.h>
+#include <stdio.h> //printf
+#include <string.h> //malloc
+#include <unistd.h> //usleep
+#include <sys/time.h> //gettimeofday
 
 // UDP RTP Images
 #include "modules/computer_vision/lib/udp/socket.h"
@@ -34,8 +34,10 @@
 #include "modules/computer_vision/cv/resize.h"
 #include "modules/computer_vision/cv/color.h"
 
+#ifdef DOWNLINK_VIDEO
 #include "modules/computer_vision/cv/encoding/jpeg.h"
 #include "modules/computer_vision/cv/encoding/rtp.h"
+#endif
 
 // Threaded computer vision
 #include <pthread.h>
@@ -110,24 +112,22 @@ void *computervision_thread_main(void* data)
   struct img_struct* img_new = video_create_image(&vid);
 
   // Video Resizing
-  uint8_t quality_factor = VIDEO_QUALITY_FACTOR; // From 0 to 99 (99=high)
-  uint8_t dri_jpeg_header = 0;
-  int microsleep = (int)(1000000. / VIDEO_FPS);
-
   struct img_struct small;
   small.w = vid.w / VIDEO_DOWNSIZE_FACTOR;
   small.h = vid.h / VIDEO_DOWNSIZE_FACTOR;
   small.buf = (uint8_t*)malloc(small.w*small.h*2);
 
-
+#ifdef DOWNLINK_VIDEO
   // Video Compression
   uint8_t* jpegbuf = (uint8_t*)malloc(vid.h*vid.w*2);
 
   // Network Transmit
   struct UdpSocket* vsock;
   vsock = udp_socket(VIDEO_SOCK_IP, VIDEO_SOCK_OUT, VIDEO_SOCK_IN, FMS_BROADCAST);
+#endif
 
   // time
+  int microsleep = (int)(1000000. / VIDEO_FPS);
   struct timeval last_time;
   gettimeofday(&last_time, NULL);
 
@@ -153,23 +153,25 @@ void *computervision_thread_main(void* data)
 
     printf("ColorCount = %d \n", color_count);
 
+#ifdef DOWNLINK_VIDEO
     // JPEG encode the image:
+    uint8_t quality_factor = VIDEO_QUALITY_FACTOR; // From 0 to 99 (99=high)
+    uint8_t dri_jpeg_header = 0;
     uint32_t image_format = FOUR_TWO_TWO;  // format (in jpeg.h)
     uint8_t* end = encode_image (small.buf, jpegbuf, quality_factor, image_format, small.w, small.h, dri_jpeg_header);
     uint32_t size = end-(jpegbuf);
 
     printf("Sending an image ...%u\n",size);
-/*
- *
- */
+
+    //Sending rtp frame
     send_rtp_frame(
         vsock,            // UDP
         jpegbuf,size,     // JPEG
         small.w, small.h, // Img Size
         0,                // Format 422
-        quality_factor,               // Jpeg-Quality
-        dri_jpeg_header,                // DRI Header
-        1              // 90kHz time increment
+        quality_factor,   // Jpeg-Quality
+        dri_jpeg_header,  // DRI Header
+        1                 // 90kHz time increment
      );
     // Extra note: when the time increment is set to 0,
     // it is automaticaly calculated by the send_rtp_frame function
@@ -179,6 +181,7 @@ void *computervision_thread_main(void* data)
     // the timestamp is always "late" so the frame is displayed immediately).
     // Here, we set the time increment to the lowest possible value
     // (1 = 1/90000 s) which is probably stupid but is actually working.
+#endif
   }
   printf("Thread Closed\n");
   video_close(&vid);
