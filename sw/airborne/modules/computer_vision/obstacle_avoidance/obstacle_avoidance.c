@@ -119,8 +119,8 @@ void *computervision_thread_main(void* data)
   }
 
   // Video Resizing
-  struct v4l2_img_buf *small;
-  small->buf = (uint8_t*)malloc(dev->w/VIDEO_DOWNSIZE_FACTOR*dev->h/VIDEO_DOWNSIZE_FACTOR*2);
+  struct v4l2_img_buf small;
+  small.buf = (uint8_t*)malloc(dev->w/VIDEO_DOWNSIZE_FACTOR*dev->h/VIDEO_DOWNSIZE_FACTOR*2);
 
 #ifdef DOWNLINK_VIDEO
   // Video Compression
@@ -147,16 +147,15 @@ void *computervision_thread_main(void* data)
     // Wait for a new frame
     struct v4l2_img_buf *img = v4l2_image_get(dev);
 
-    // Resize: device by 4
-    //TODO: Adjust resize_uyuv and resize_v4l2.h for new stream
-/*    resize_uyuv(img->buf, small, VIDEO_DOWNSIZE_FACTOR);*/
+    // Resize: device by VIDEO_DOWNSIZE_FACTOR
+    resize_uyuv(img->buf, &small, dev->w, dev->h, VIDEO_DOWNSIZE_FACTOR);
 
-    //TODO: Adjust color_v4l2.h and colorfilt_uyvy function for new stream
-/*    color_count = colorfilt_uyvy(&small,&small,*/
-/*        color_lum_min,color_lum_max,*/
-/*        color_cb_min,color_cb_max,*/
-/*        color_cr_min,color_cr_max*/
-/*        );*/
+    color_count = colorfilt_uyvy(&small,&small, 
+        dev->w/VIDEO_DOWNSIZE_FACTOR, dev->h/VIDEO_DOWNSIZE_FACTOR,
+        color_lum_min,color_lum_max,
+        color_cb_min,color_cb_max,
+        color_cr_min,color_cr_max
+        );
 
     printf("ColorCount = %d \n", color_count);
 

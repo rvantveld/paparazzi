@@ -21,17 +21,17 @@
 
 
 #include <stdint.h>
-#include "image.h"
+#include "v4l/v4l2.h"
 
-inline void resize_uyuv(struct img_struct *input, struct img_struct *output, int downsample);
-inline void resize_uyuv(struct img_struct *input, struct img_struct *output, int downsample)
+inline void resize_uyuv(struct v4l2_img_buf *input, struct v4l2_img_buf *output, uint16_t w, uint16_t h, int downsample);
+inline void resize_uyuv(struct v4l2_img_buf *input, struct v4l2_img_buf *output, uint16_t w, uint16_t h, int downsample)
 {
   uint8_t *source = input->buf;
   uint8_t *dest = output->buf;
 
   int pixelskip = downsample - 1;
-  for (int y = 0; y < output->h; y++) {
-    for (int x = 0; x < output->w; x += 2) {
+  for (int y = 0; y < h/downsample; y++) {
+    for (int x = 0; x < w/downsample; x += 2) {
       // YUYV
       *dest++ = *source++; // U
       *dest++ = *source++; // Y
@@ -42,7 +42,7 @@ inline void resize_uyuv(struct img_struct *input, struct img_struct *output, int
       if (pixelskip) { source += (pixelskip - 1) * 2; }
     }
     // skip 3 rows
-    if (pixelskip) { source += pixelskip * input->w * 2; }
+    if (pixelskip) { source += pixelskip * w * 2; }
   }
 }
 

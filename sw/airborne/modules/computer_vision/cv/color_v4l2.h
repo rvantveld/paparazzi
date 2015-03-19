@@ -21,17 +21,17 @@
 
 
 #include <stdint.h>
-#include "image.h"
+#include "v4l/v4l2.h"
 
-inline void grayscale_uyvy(struct img_struct *input, struct img_struct *output);
-inline void grayscale_uyvy(struct img_struct *input, struct img_struct *output)
+inline void grayscale_uyvy(struct v4l2_img_buf *input, struct v4l2_img_buf *output, uint16_t w, uint16_t h);
+inline void grayscale_uyvy(struct v4l2_img_buf *input, struct v4l2_img_buf *output, uint16_t w, uint16_t h)
 {
   uint8_t *source = input->buf;
   uint8_t *dest = output->buf;
   source++;
 
-  for (int y = 0; y < output->h; y++) {
-    for (int x = 0; x < output->w; x++) {
+  for (int y = 0; y < h; y++) { //h and w should contain VIDEO_DOWNSIZE_FACTOR! Add to img structure?
+    for (int x = 0; x < w; x++) {
       // UYVY
       *dest++ = 127;        // U
       *dest++ = *source;    // Y
@@ -40,17 +40,17 @@ inline void grayscale_uyvy(struct img_struct *input, struct img_struct *output)
   }
 }
 
-inline int colorfilt_uyvy(struct img_struct *input, struct img_struct *output, uint8_t y_m, uint8_t y_M, uint8_t u_m,
+inline int colorfilt_uyvy(struct v4l2_img_buf *input, struct v4l2_img_buf *output, uint16_t w, uint16_t h, uint8_t y_m, uint8_t y_M, uint8_t u_m,
                           uint8_t u_M, uint8_t v_m, uint8_t v_M);
-inline int colorfilt_uyvy(struct img_struct *input, struct img_struct *output, uint8_t y_m, uint8_t y_M, uint8_t u_m,
+inline int colorfilt_uyvy(struct v4l2_img_buf *input, struct v4l2_img_buf *output, uint16_t w, uint16_t h, uint8_t y_m, uint8_t y_M, uint8_t u_m,
                           uint8_t u_M, uint8_t v_m, uint8_t v_M)
 {
   int cnt = 0;
   uint8_t *source = input->buf;
   uint8_t *dest = output->buf;
 
-  for (int y = 0; y < output->h; y++) {
-    for (int x = 0; x < output->w; x += 2) {
+  for (int y = 0; y < h; y++) { //h and w should contain VIDEO_DOWNSIZE_FACTOR! Add to img structure?
+    for (int x = 0; x < w; x += 2) {
       // Color Check:
       if (
         // Light
