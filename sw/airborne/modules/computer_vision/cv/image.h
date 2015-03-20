@@ -23,13 +23,13 @@
 #ifndef _MY_IMAGE_HEADER_
 #define _MY_IMAGE_HEADER_
 
-
-struct img_struct {
-  int seq;
-  double timestamp;
-  unsigned char *buf;
-  int w;
-  int h;
+/* V4L2 memory mapped image buffer */
+struct v4l2_img_buf {
+  uint8_t idx;            //< The index of the buffer
+  size_t length;          //< The size of the buffer
+  void *buf;              //< Pointer to the memory mapped buffer
+  uint16_t w;             //< The width of the image
+  uint16_t h;             //< The height of the image
 };
 
 #endif

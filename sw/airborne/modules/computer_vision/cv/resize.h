@@ -23,8 +23,8 @@
 #include <stdint.h>
 #include "image.h"
 
-inline void resize_uyuv(struct img_struct *input, struct img_struct *output, int downsample);
-inline void resize_uyuv(struct img_struct *input, struct img_struct *output, int downsample)
+inline void resize_uyuv(struct v4l2_img_buf *input, struct v4l2_img_buf *output, int downsample);
+inline void resize_uyuv(struct v4l2_img_buf *input, struct v4l2_img_buf *output, int downsample)
 {
   uint8_t *source = input->buf;
   uint8_t *dest = output->buf;
