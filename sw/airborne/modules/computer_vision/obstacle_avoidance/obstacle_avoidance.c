@@ -134,18 +134,22 @@ void *computervision_thread_main(void* data)
   vsock = udp_socket(VIDEO_SOCK_IP, VIDEO_SOCK_OUT, VIDEO_SOCK_IN, FMS_BROADCAST);
   #endif
 
+  #ifdef DOWNLINK_VIDEO
   // time
   int microsleep = (int)(1000000. / VIDEO_FPS);
   struct timeval last_time;
   gettimeofday(&last_time, NULL);
+  #endif
 
   while (computer_vision_thread_command > 0) {
     // compute usleep to have a more stable frame rate
+    #ifdef DOWNLINK_VIDEO
     struct timeval time;
     gettimeofday(&time, NULL);
     int dt = (int)(time.tv_sec - last_time.tv_sec) * 1000000 + (int)(time.tv_usec - last_time.tv_usec);
     if (dt < microsleep) { usleep(microsleep - dt); }
     last_time = time;
+    #endif
 
     // Wait for a new frame
     struct v4l2_img_buf *img = v4l2_image_get(dev);
