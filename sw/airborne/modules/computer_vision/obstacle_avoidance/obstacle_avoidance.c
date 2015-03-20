@@ -34,10 +34,11 @@
 
 // Video
 #include "v4l/v4l2.h"
-#include "resize_v4l2.h"
-#include "color_v4l2.h"
+#include "resize.h"
+#include "color.h"
 
 // Downlink Video
+//#define DOWNLINK_VIDEO 1
 #ifdef DOWNLINK_VIDEO
 #include "encoding/jpeg.h"
 #include "encoding/rtp.h"
@@ -120,16 +121,18 @@ void *computervision_thread_main(void* data)
 
   // Video Resizing
   struct v4l2_img_buf small;
-  small.buf = (uint8_t*)malloc(dev->w/VIDEO_DOWNSIZE_FACTOR*dev->h/VIDEO_DOWNSIZE_FACTOR*2);
+  small.w = dev->w / VIDEO_DOWNSIZE_FACTOR;
+  small.h = dev->h / VIDEO_DOWNSIZE_FACTOR;
+  small.buf = (uint8_t*)malloc(small.w*small.h*2);
 
-#ifdef DOWNLINK_VIDEO
+  #ifdef DOWNLINK_VIDEO
   // Video Compression
   uint8_t *jpegbuf = (uint8_t*)malloc(dev->w*dev->h*2);
 
   // Network Transmit
   struct UdpSocket *vsock;
   vsock = udp_socket(VIDEO_SOCK_IP, VIDEO_SOCK_OUT, VIDEO_SOCK_IN, FMS_BROADCAST);
-#endif
+  #endif
 
   // time
   int microsleep = (int)(1000000. / VIDEO_FPS);
@@ -146,12 +149,12 @@ void *computervision_thread_main(void* data)
 
     // Wait for a new frame
     struct v4l2_img_buf *img = v4l2_image_get(dev);
+    printf("Got a new frame");
 
     // Resize: device by VIDEO_DOWNSIZE_FACTOR
-    resize_uyuv(img->buf, &small, dev->w, dev->h, VIDEO_DOWNSIZE_FACTOR);
+    resize_uyuv(img, &small, VIDEO_DOWNSIZE_FACTOR);
 
     color_count = colorfilt_uyvy(&small,&small, 
-        dev->w/VIDEO_DOWNSIZE_FACTOR, dev->h/VIDEO_DOWNSIZE_FACTOR,
         color_lum_min,color_lum_max,
         color_cb_min,color_cb_max,
         color_cr_min,color_cr_max
@@ -159,25 +162,25 @@ void *computervision_thread_main(void* data)
 
     printf("ColorCount = %d \n", color_count);
 
-#ifdef DOWNLINK_VIDEO
+    #ifdef DOWNLINK_VIDEO
     // JPEG encode the image:
     uint8_t quality_factor = VIDEO_QUALITY_FACTOR; // From 0 to 99 (99=high)
     uint8_t dri_jpeg_header = 0;
     uint32_t image_format = FOUR_TWO_TWO;  // format (in jpeg.h)
-    uint8_t* end = encode_image (img->buf, jpegbuf, quality_factor, image_format, dev->w, dev->h, dri_jpeg_header);
+    uint8_t* end = encode_image (small.buf, jpegbuf, quality_factor, image_format, small.w, small.h, dri_jpeg_header);
     uint32_t size = end-(jpegbuf);
 
-    printf("Sending an image ...%u\n",size);
+/*    printf("Sending an image ...%u\n",size);*/
 
     //Sending rtp frame
     send_rtp_frame(
         vsock,            // UDP
         jpegbuf,size,     // JPEG
-        dev->w, dev->h,   // Img Size
+        small.w, small.h, // Img Size
         0,                // Format 422
         quality_factor,   // Jpeg-Quality
         dri_jpeg_header,  // DRI Header
-        1                 // 90kHz time increment
+        0                 // 90kHz time increment
      );
     // Extra note: when the time increment is set to 0,
     // it is automaticaly calculated by the send_rtp_frame function
@@ -187,7 +190,7 @@ void *computervision_thread_main(void* data)
     // the timestamp is always "late" so the frame is displayed immediately).
     // Here, we set the time increment to the lowest possible value
     // (1 = 1/90000 s) which is probably stupid but is actually working.
-#endif
+    #endif
   
   // Free the image
   v4l2_image_free(dev, img);

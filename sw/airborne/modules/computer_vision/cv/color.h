@@ -23,8 +23,8 @@
 #include <stdint.h>
 #include "image.h"
 
-inline void grayscale_uyvy(struct img_struct *input, struct img_struct *output);
-inline void grayscale_uyvy(struct img_struct *input, struct img_struct *output)
+inline void grayscale_uyvy(struct v4l2_img_buf *input, struct v4l2_img_buf *output);
+inline void grayscale_uyvy(struct v4l2_img_buf *input, struct v4l2_img_buf *output)
 {
   uint8_t *source = input->buf;
   uint8_t *dest = output->buf;
@@ -40,9 +40,9 @@ inline void grayscale_uyvy(struct img_struct *input, struct img_struct *output)
   }
 }
 
-inline int colorfilt_uyvy(struct img_struct *input, struct img_struct *output, uint8_t y_m, uint8_t y_M, uint8_t u_m,
+inline int colorfilt_uyvy(struct v4l2_img_buf *input, struct v4l2_img_buf *output, uint8_t y_m, uint8_t y_M, uint8_t u_m,
                           uint8_t u_M, uint8_t v_m, uint8_t v_M);
-inline int colorfilt_uyvy(struct img_struct *input, struct img_struct *output, uint8_t y_m, uint8_t y_M, uint8_t u_m,
+inline int colorfilt_uyvy(struct v4l2_img_buf *input, struct v4l2_img_buf *output, uint8_t y_m, uint8_t y_M, uint8_t u_m,
                           uint8_t u_M, uint8_t v_m, uint8_t v_M)
 {
   int cnt = 0;
