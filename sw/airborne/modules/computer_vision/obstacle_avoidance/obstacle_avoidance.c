@@ -21,35 +21,43 @@
 
 
 // Own header
-#include "modules/computer_vision/obstacle_avoidance/obstacle_avoidance.h"
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/time.h>
+#include "obstacle_avoidance.h"
+
+// Sockets
+#include <stdio.h> //printf
+#include <string.h> //malloc
+#include <unistd.h> //usleep
+#include <sys/time.h> //gettimeofday
 
 // UDP RTP Images
-#include "modules/computer_vision/lib/udp/socket.h"
-// Video
-#include "modules/computer_vision/lib/v4l/video.h"
-#include "modules/computer_vision/cv/resize.h"
-#include "modules/computer_vision/cv/color.h"
+#include "udp/socket.h"
 
-#include "modules/computer_vision/cv/encoding/jpeg.h"
-#include "modules/computer_vision/cv/encoding/rtp.h"
+// Video
+#include "v4l/v4l2.h"
+#include "resize.h"
+#include "color.h"
+
+// Downlink Video
+//#define DOWNLINK_VIDEO 1
+#ifdef DOWNLINK_VIDEO
+#include "encoding/jpeg.h"
+#include "encoding/rtp.h"
+#endif
+
+#define DEBUG_INFO(X, ...) ;
 
 // Threaded computer vision
 #include <pthread.h>
+
+// Computervision runs in a thread
+/*#include "inter_thread_data.h"*/
 
 // Default broadcast IP
 #ifndef VIDEO_SOCK_IP
 #define VIDEO_SOCK_IP "192.168.1.255"
 #endif
 
-// Output socket can be defined from an offset
-#ifdef VIDEO_SOCK_OUT_OFFSET
-#define VIDEO_SOCK_OUT (5000+VIDEO_SOCK_OUT_OFFSET)
-#endif
-
+// I/O Sockets
 #ifndef VIDEO_SOCK_OUT
 #define VIDEO_SOCK_OUT 5000
 #endif
@@ -94,40 +102,40 @@ volatile uint8_t computer_vision_thread_command = 0;
 void *computervision_thread_main(void* data);
 void *computervision_thread_main(void* data)
 {
-  // Video Input
-  struct vid_struct vid;
-  vid.device = (char*)"/dev/video1";
-  vid.w=1280;
-  vid.h=720;
-  vid.n_buffers = 4;
-  if (video_init(&vid)<0) {
+/*  // Local data in/out*/
+/*  struct CVresults vision_results;*/
+/*  struct PPRZinfo autopilot_data;*/
+
+  // Create V4L2 device video1 = front camera
+  struct v4l2_device *dev = v4l2_init("/dev/video1", 1280, 720, 4);
+  if (dev == NULL) {
     printf("Error initialising video\n");
-    computervision_thread_status = -1;
     return 0;
   }
 
-  // Video Grabbing
-  struct img_struct* img_new = video_create_image(&vid);
+  // Start the streaming on the V4L2 device
+  if(!v4l2_start_capture(dev)) {
+    printf("Could not start capture\n");
+    return 0;
+  }
 
   // Video Resizing
-  uint8_t quality_factor = VIDEO_QUALITY_FACTOR; // From 0 to 99 (99=high)
-  uint8_t dri_jpeg_header = 0;
-  int microsleep = (int)(1000000. / VIDEO_FPS);
-
-  struct img_struct small;
-  small.w = vid.w / VIDEO_DOWNSIZE_FACTOR;
-  small.h = vid.h / VIDEO_DOWNSIZE_FACTOR;
+  struct v4l2_img_buf small;
+  small.w = dev->w / VIDEO_DOWNSIZE_FACTOR;
+  small.h = dev->h / VIDEO_DOWNSIZE_FACTOR;
   small.buf = (uint8_t*)malloc(small.w*small.h*2);
 
-
+  #ifdef DOWNLINK_VIDEO
   // Video Compression
-  uint8_t* jpegbuf = (uint8_t*)malloc(vid.h*vid.w*2);
+  uint8_t *jpegbuf = (uint8_t*)malloc(dev->w*dev->h*2);
 
   // Network Transmit
-  struct UdpSocket* vsock;
+  struct UdpSocket *vsock;
   vsock = udp_socket(VIDEO_SOCK_IP, VIDEO_SOCK_OUT, VIDEO_SOCK_IN, FMS_BROADCAST);
+  #endif
 
   // time
+  int microsleep = (int)(1000000. / VIDEO_FPS);
   struct timeval last_time;
   gettimeofday(&last_time, NULL);
 
@@ -139,13 +147,14 @@ void *computervision_thread_main(void* data)
     if (dt < microsleep) { usleep(microsleep - dt); }
     last_time = time;
 
-    // Grab new frame
-    video_grab_image(&vid, img_new);
+    // Wait for a new frame
+    struct v4l2_img_buf *img = v4l2_image_get(dev);
+    printf("Got a new frame");
 
-    // Resize: device by 4
-    resize_uyuv(img_new, &small, VIDEO_DOWNSIZE_FACTOR);
+    // Resize: device by VIDEO_DOWNSIZE_FACTOR
+    resize_uyuv(img, &small, VIDEO_DOWNSIZE_FACTOR);
 
-    color_count = colorfilt_uyvy(&small,&small,
+    color_count = colorfilt_uyvy(&small,&small, 
         color_lum_min,color_lum_max,
         color_cb_min,color_cb_max,
         color_cr_min,color_cr_max
@@ -153,23 +162,25 @@ void *computervision_thread_main(void* data)
 
     printf("ColorCount = %d \n", color_count);
 
+    #ifdef DOWNLINK_VIDEO
     // JPEG encode the image:
+    uint8_t quality_factor = VIDEO_QUALITY_FACTOR; // From 0 to 99 (99=high)
+    uint8_t dri_jpeg_header = 0;
     uint32_t image_format = FOUR_TWO_TWO;  // format (in jpeg.h)
     uint8_t* end = encode_image (small.buf, jpegbuf, quality_factor, image_format, small.w, small.h, dri_jpeg_header);
     uint32_t size = end-(jpegbuf);
 
-    printf("Sending an image ...%u\n",size);
-/*
- *
- */
+/*    printf("Sending an image ...%u\n",size);*/
+
+    //Sending rtp frame
     send_rtp_frame(
         vsock,            // UDP
         jpegbuf,size,     // JPEG
         small.w, small.h, // Img Size
         0,                // Format 422
-        quality_factor,               // Jpeg-Quality
-        dri_jpeg_header,                // DRI Header
-        0              // 90kHz time increment
+        quality_factor,   // Jpeg-Quality
+        dri_jpeg_header,  // DRI Header
+        0                 // 90kHz time increment
      );
     // Extra note: when the time increment is set to 0,
     // it is automaticaly calculated by the send_rtp_frame function
@@ -179,9 +190,14 @@ void *computervision_thread_main(void* data)
     // the timestamp is always "late" so the frame is displayed immediately).
     // Here, we set the time increment to the lowest possible value
     // (1 = 1/90000 s) which is probably stupid but is actually working.
+    #endif
+  
+  // Free the image
+  v4l2_image_free(dev, img);
   }
+
   printf("Thread Closed\n");
-  video_close(&vid);
+  v4l2_close(dev);
   computervision_thread_status = -100;
   return 0;
 }
