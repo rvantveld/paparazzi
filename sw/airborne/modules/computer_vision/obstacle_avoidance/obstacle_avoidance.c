@@ -38,7 +38,7 @@
 #include "color.h"
 
 // Downlink Video
-//#define DOWNLINK_VIDEO 1
+/*#define DOWNLINK_VIDEO 1*/
 #ifdef DOWNLINK_VIDEO
 #include "encoding/jpeg.h"
 #include "encoding/rtp.h"
