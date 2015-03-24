@@ -37,11 +37,14 @@
 #include "visual_estimator.h"
 
 // Computer Vision
-#include "opticflow/optic_flow_int.h"
-#include "opticflow/fast9/fastRosten.h"
+#include "optic_flow_int.h"
+#include "fastRosten.h"
 
 // for FPS
 #include "modules/computer_vision/cv/framerate.h"
+
+// include polyfit
+#include "math/pprz_polyfit_float.h"
 
 
 // Local variables
@@ -61,17 +64,17 @@ struct visual_estimator_struct
 
   // Store previous
   float prev_pitch;
-  float prev_roll;
+  float prev_yaw;
 } visual_estimator;
 
-// ARDrone Vertical Camera Parameters
+// ARDrone Vertical(should be horizontal) Camera Parameters
 #define FOV_H 0.67020643276
 #define FOV_W 0.89360857702
 #define Fx_ARdrone 343.1211
 #define Fy_ARdrone 348.5053
 
 // Corner Detection
-#define MAX_COUNT 100
+#define MAX_COUNT 20 //was 100
 
 // Flow Derotation
 #define FLOW_DEROTATION
@@ -90,13 +93,13 @@ void opticflow_plugin_init(unsigned int w, unsigned int h, struct CVresults *res
 
   visual_estimator.old_img_init = 1;
   visual_estimator.prev_pitch = 0.0;
-  visual_estimator.prev_roll = 0.0;
+  visual_estimator.prev_yaw = 0.0;
 
   results->OFx = 0.0;
   results->OFy = 0.0;
   results->dx_sum = 0.0;
   results->dy_sum = 0.0;
-  results->diff_roll = 0.0;
+  results->diff_yaw = 0.0;
   results->diff_pitch = 0.0;
   results->cam_h = 0.0;
   results->Velx = 0.0;
@@ -115,6 +118,7 @@ void opticflow_plugin_run(unsigned char *frame, struct PPRZinfo* info, struct CV
   int max_count = 25;
   int borderx = 24, bordery = 24;
   int x[MAX_COUNT], y[MAX_COUNT];
+  float xFloat[MAX_COUNT], dxFloat[MAX_COUNT];
   int new_x[MAX_COUNT], new_y[MAX_COUNT];
   int status[MAX_COUNT];
   int dx[MAX_COUNT], dy[MAX_COUNT];
@@ -216,7 +220,22 @@ void opticflow_plugin_run(unsigned char *frame, struct PPRZinfo* info, struct CV
     dx[i] = new_x[i] - x[i];
     dy[i] = new_y[i] - y[i];
   }
-
+  
+  printf("x: %d and dx: %d \n", x[5], dx[5]);
+  
+  memcpy(xFloat, x, sizeof(int));
+  memcpy(dxFloat, dx, sizeof(int));
+  
+  if (results->flow_count){
+    quick_sort(xFloat, results->flow_count);
+    quick_sort(dxFloat, results->flow_count); // 11
+    pprz_polyfit_float(xFloat, dxFloat, results->flow_count, 1, results->points);
+    
+    
+    //printf(" x %f and dx %f \n", xFloat[50], dxFloat[50]);
+    //printf("results points %f ,  %f \n", results->points[0], results->points[1]);
+  }
+    
   // Median Filter
   if (results->flow_count) {
     quick_sort_int(dx, results->flow_count); // 11
@@ -229,16 +248,15 @@ void opticflow_plugin_run(unsigned char *frame, struct PPRZinfo* info, struct CV
     results->dy_sum = 0.0;
   }
 
-  // Flow Derotation
+  // Flow Derotation corrected for horizontal camera
   results->diff_pitch = (info->theta - visual_estimator.prev_pitch) * h / FOV_H;
-  results->diff_roll = (info->phi - visual_estimator.prev_roll) * w / FOV_W;
+  results->diff_yaw = (info->psi - visual_estimator.prev_yaw) * w / FOV_W;
   visual_estimator.prev_pitch = info->theta;
-  visual_estimator.prev_roll = info->phi;
-
+  visual_estimator.prev_yaw = info->psi;
   float OFx_trans, OFy_trans;
 #ifdef FLOW_DEROTATION
   if (results->flow_count) {
-    OFx_trans = results->dx_sum - results->diff_roll;
+    OFx_trans = results->dx_sum - results->diff_yaw;
     OFy_trans = results->dy_sum - results->diff_pitch;
 
     if ((OFx_trans <= 0) != (results->dx_sum <= 0)) {

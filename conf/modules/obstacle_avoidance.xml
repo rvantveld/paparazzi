@@ -21,8 +21,15 @@
     <file name="rtp.c" dir="modules/computer_vision/cv/encoding"/>
     <file name="socket.c" dir="modules/computer_vision/lib/udp"/>
     <file name="v4l2.c" dir="modules/computer_vision/lib/v4l"/>
+    <file name="pprz_matrix_decomp_float.c" dir="math"/>
+    <file name="pprz_polyfit_float.c" dir="math"/>
+    <file name="fastRosten.c"/>
+    <file name="visual_estimator.c"/>
+    <file name="optic_flow_int.c"/>
+    <file name="framerate.c" dir="modules/computer_vision/cv"/>
     <define name="modules/computer_vision/cv" type="include"/>
     <define name="modules/computer_vision/lib" type="include"/>
+    <define name="math" type="include"/>
     <define name="pthread" type="raw"/>
     <define name="__USE_GNU"/>
     <flag name="LDFLAGS" value="pthread"/>

@@ -32,7 +32,7 @@
 #include <math.h>
 #include <string.h>
 #include "optic_flow_int.h"
-#include "modules/computer_vision/opticflow_module.h"
+#include "opticflow_module.h"
 
 #define int_index(x,y) (y * IMG_WIDTH + x)
 #define uint_index(xx, yy) (((yy * IMG_WIDTH + xx) * 2) & 0xFFFFFFFC)

@@ -38,7 +38,7 @@
 #include "color.h"
 
 // Downlink Video
-//#define DOWNLINK_VIDEO 1
+//#define DOWNLINK_VIDEO 1 //to stream or not to stream
 #ifdef DOWNLINK_VIDEO
 #include "encoding/jpeg.h"
 #include "encoding/rtp.h"
@@ -49,8 +49,17 @@
 // Threaded computer vision
 #include <pthread.h>
 
+// Inlcude visual estimator
+#include "visual_estimator.h"
+
+// Use stateGetNedToBodyEulers_f
+#include "state.h"
+
+// Include fast Rosten function
+#include "fastRosten.h"
+
 // Computervision runs in a thread
-/*#include "inter_thread_data.h"*/
+#include "inter_thread_data.h"
 
 // Default broadcast IP
 #ifndef VIDEO_SOCK_IP
@@ -102,9 +111,13 @@ volatile uint8_t computer_vision_thread_command = 0;
 void *computervision_thread_main(void* data);
 void *computervision_thread_main(void* data)
 {
-/*  // Local data in/out*/
-/*  struct CVresults vision_results;*/
-/*  struct PPRZinfo autopilot_data;*/
+  // Local data in/out
+  struct CVresults vision_results;
+  struct PPRZinfo autopilot_data;
+  
+  autopilot_data.cnt = 0;
+  autopilot_data.psi = 0;
+  autopilot_data.theta = 0;
 
   // Create V4L2 device video1 = front camera
   struct v4l2_device *dev = v4l2_init("/dev/video1", 1280, 720, 4);
@@ -140,7 +153,10 @@ void *computervision_thread_main(void* data)
   struct timeval last_time;
   gettimeofday(&last_time, NULL);
   #endif
-
+      
+  // Called by plugin
+  opticflow_plugin_init(dev->w, dev->h, &vision_results);
+  
   while (computer_vision_thread_command > 0) {
     // compute usleep to have a more stable frame rate
     #ifdef DOWNLINK_VIDEO
@@ -153,19 +169,31 @@ void *computervision_thread_main(void* data)
 
     // Wait for a new frame
     struct v4l2_img_buf *img = v4l2_image_get(dev);
-    printf("Got a new frame");
-
+    //printf("Got a new frame");
+    
     // Resize: device by VIDEO_DOWNSIZE_FACTOR
     resize_uyuv(img, &small, VIDEO_DOWNSIZE_FACTOR);
-
+    
     color_count = colorfilt_uyvy(&small,&small, 
         color_lum_min,color_lum_max,
         color_cb_min,color_cb_max,
         color_cr_min,color_cr_max
-        );
+        );    
+    
+    //printf("ColorCount = %d \n", color_count);
+    
+    // 
+    autopilot_data.cnt++;
+    autopilot_data.psi = stateGetNedToBodyEulers_f()->psi;
+    autopilot_data.theta = stateGetNedToBodyEulers_f()->theta;
 
-    printf("ColorCount = %d \n", color_count);
-
+    // Run image
+    opticflow_plugin_run(img->buf, &autopilot_data, &vision_results);
+    
+    // print command to test the function
+    //printf(" Vision test %f %f \n", vision_results.dx_sum, vision_results.dy_sum);
+    //printf(" Vision test %f %f \n", autopilot_data.psi, autopilot_data.theta);
+    
     #ifdef DOWNLINK_VIDEO
     // JPEG encode the image:
     uint8_t quality_factor = VIDEO_QUALITY_FACTOR; // From 0 to 99 (99=high)

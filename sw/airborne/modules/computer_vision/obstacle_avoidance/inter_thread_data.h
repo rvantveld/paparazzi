@@ -40,15 +40,16 @@ struct CVresults {
   float cam_h;      // Debug parameters
   int count;
   float OFx, OFy, dx_sum, dy_sum;
-  float diff_roll;
+  float diff_yaw;
   float diff_pitch;
   float FPS;
+  float points[2];
 };
 
 /// Data from module to thread
 struct PPRZinfo {
   int cnt;        // IMU msg counter
-  float phi;      // roll [rad]
+  float psi;      // yaw [rad]
   float theta;    // pitch [rad]
   float agl;      // height above ground [m]
 };
