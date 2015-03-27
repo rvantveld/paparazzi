@@ -3,31 +3,31 @@
 <module name="obstacle_avoidance" dir="computer_vision/obstacle_avoidance">
   <doc>
     <description>Video ARDone 2 Front Camera Obstacle Avoidance</description>
-    <define name="VIDEO_SOCK_IP" value="192.168.1.255" description="IP broadcast address"/>
-    <define name="VIDEO_DOWNSIZE_FACTOR" value="2" description="Reduction factor of the video stream"/>
-    <define name="VIDEO_QUALITY_FACTOR" value="50" description="JPEG encoding compression factor [0-99]"/>
-    <define name="VIDEO_FPS" value="4." description="Video stream frame rate"/>
-    <define name="DOWNLINK_VIDEO" value="TRUE" description="Also stream video: warning: this makes the optic flow slow: DEBUGGING only" />
   </doc>
 
   <header>
     <file name="obstacle_avoidance.h"/>
   </header>
 
-  <periodic fun="obstacle_avoidance_run()" freq="1" start="obstacle_avoidance_start()" stop="obstacle_avoidance_stop()" autorun="TRUE"/>
+  <init fun="obstacle_avoidance_init()"/>
+  <periodic fun="obstacle_avoidance_run()" start="obstacle_avoidance_start()" stop="obstacle_avoidance_stop()" autorun="TRUE"/>
   <makefile target="ap">
     <file name="obstacle_avoidance.c"/>
-    <file name="jpeg.c" dir="modules/computer_vision/cv/encoding"/>
-    <file name="rtp.c" dir="modules/computer_vision/cv/encoding"/>
+    <file name="opticflow_calculator.c"/>
+    <file name="color_count.c"/>
+
     <file name="socket.c" dir="modules/computer_vision/lib/udp"/>
     <file name="v4l2.c" dir="modules/computer_vision/lib/v4l"/>
+    <file name="jpeg.c" dir="modules/computer_vision/lib/encoding"/>
+    <file name="rtp.c" dir="modules/computer_vision/lib/encoding"/>
+
+    <file name="image.c" dir="modules/computer_vision/lib/vision"/>
+    <file name="fastRosten.c" dir="modules/computer_vision/lib/vision"/>
+    <file name="lucas_kanade.c" dir="modules/computer_vision/lib/vision"/>
+
     <file name="pprz_matrix_decomp_float.c" dir="math"/>
     <file name="pprz_polyfit_float.c" dir="math"/>
-    <file name="fastRosten.c"/>
-    <file name="visual_estimator.c"/>
-    <file name="optic_flow_int.c"/>
-    <file name="framerate.c" dir="modules/computer_vision/cv"/>
-    <define name="modules/computer_vision/cv" type="include"/>
+
     <define name="modules/computer_vision/lib" type="include"/>
     <define name="math" type="include"/>
     <define name="pthread" type="raw"/>

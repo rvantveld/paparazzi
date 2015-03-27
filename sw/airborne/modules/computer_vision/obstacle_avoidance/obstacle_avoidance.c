@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2013
+ * Copyright (C) 2012-2015
  *
  * This file is part of Paparazzi.
  *
@@ -19,47 +19,40 @@
  * Boston, MA 02111-1307, USA.
  */
 
+/**
+ * @file obstacle_avoidance.c
+ */
 
 // Own header
 #include "obstacle_avoidance.h"
 
-// Sockets
 #include <stdio.h> //printf
-#include <string.h> //malloc
-#include <unistd.h> //usleep
-#include <sys/time.h> //gettimeofday
+// Threaded computer vision
+#include <pthread.h>
+
+// Use stateGetNedToBodyEulers_f
+#include "state.h"
 
 // UDP RTP Images
 #include "udp/socket.h"
 
 // Video
 #include "v4l/v4l2.h"
-#include "resize.h"
-#include "color.h"
 
 // Downlink Video
-//#define DOWNLINK_VIDEO 1 //to stream or not to stream
+#define DOWNLINK_VIDEO 1 //to stream or not to stream
 #ifdef DOWNLINK_VIDEO
 #include "encoding/jpeg.h"
 #include "encoding/rtp.h"
+
+#include <sys/time.h> //gettimeofday
 #endif
 
-#define DEBUG_INFO(X, ...) ;
+// Sleep & Usleep functions
+#include <unistd.h>
 
-// Threaded computer vision
-#include <pthread.h>
-
-// Inlcude visual estimator
-#include "visual_estimator.h"
-
-// Use stateGetNedToBodyEulers_f
-#include "state.h"
-
-// Include fast Rosten function
-#include "fastRosten.h"
-
-// Computervision runs in a thread
-#include "inter_thread_data.h"
+// Error Codes
+#include "errno.h"
 
 // Default broadcast IP
 #ifndef VIDEO_SOCK_IP
@@ -70,9 +63,8 @@
 #ifndef VIDEO_SOCK_OUT
 #define VIDEO_SOCK_OUT 5000
 #endif
-
 #ifndef VIDEO_SOCK_IN
-#define VIDEO_SOCK_IN 5001
+#define VIDEO_SOCK_IN 4999
 #endif
 
 // Downsize factor for video stream
@@ -90,75 +82,146 @@
 #define VIDEO_FPS 4.
 #endif
 
-uint8_t color_lum_min = 105;
+/* Check setting for LK/FAST9 downsampling */
+#ifndef LK_DOWNSIZE
+#define LK_DOWNSIZE 4
+#endif
+
+/* The main opticflow variables */
+static struct opticflow_t opticflow;                //< Opticflow calculations
+static struct opticflow_result_t opticflow_result;  //< The opticflow result
+static struct opticflow_state_t opticflow_state;    //< State of the drone to communicate with the opticflow
+static struct v4l2_device *opticflow_dev;           //< The opticflow camera V4L2 device
+static bool_t opticflow_got_result;                 //< When we have an optical flow calculation
+
+/* The computer vision thread variables */
+static pthread_t opticflow_calc_thread;             //< The optical flow calculation thread
+static pthread_mutex_t opticflow_mutex;             //< Mutex lock for thread safety
+volatile uint8_t opticflow_calc_thread_command = 0; //< Command to start/stop opticflow thread
+
+/* Static functions */
+static void *opticflow_module_calc(void *data);     //< The main optical flow calculation thread
+
+/* Set color reference values (currently orange/red) */
+uint8_t color_lum_min = 85;
 uint8_t color_lum_max = 205;
-uint8_t color_cb_min  = 52;
-uint8_t color_cb_max  = 140;
-uint8_t color_cr_min  = 180;
-uint8_t color_cr_max  = 255;
+uint8_t color_cb_min  = 50;
+uint8_t color_cb_max  = 120;
+uint8_t color_cr_min  = 160;
+uint8_t color_cr_max  = 240;
+uint8_t color_downsize_factor = 2; //< Factor used to downsize image in color count function
 
-int color_count = 0;
+// Set color count state to 0
+uint16_t color_counted = 0;
 
-void obstacle_avoidance_run(void) {
+// Set variable to communicate obstacle detection with waypoint navigation
+int obstacleDetected = false;
+
+/**
+ * Initialize the optical flow module for the front camera
+ */
+void obstacle_avoidance_init(void)
+{
+  // Set the opticflow state to 0
+  opticflow_state.psi = 0;
+  opticflow_state.theta = 0;
+
+  // Initialize the opticflow calculation
+  opticflow_calc_init(&opticflow, 1280/LK_DOWNSIZE, 720/LK_DOWNSIZE);
+  opticflow_got_result = FALSE;
+
+  // Try to initialize the video device
+  opticflow_dev = v4l2_init("/dev/video1", 1280, 720, 10);
+  if (opticflow_dev == NULL) {
+    printf("[opticflow_module] Could not initialize the %s V4L2 device.\n", "/dev/video1");
+    return;
+  }
 }
 
-/////////////////////////////////////////////////////////////////////////
-// COMPUTER VISION THREAD
-
-pthread_t computervision_thread;
-volatile uint8_t computervision_thread_status = 0;
-volatile uint8_t computer_vision_thread_command = 0;
-void *computervision_thread_main(void* data);
-void *computervision_thread_main(void* data)
+/**
+ * Update the optical flow state for the calculation thread
+ * and update the stabilization loops with the newest result
+ */
+void obstacle_avoidance_run(void)
 {
-  // Local data in/out
-  struct CVresults vision_results;
-  struct PPRZinfo autopilot_data;
+  pthread_mutex_lock(&opticflow_mutex);
+  // Send Updated data to thread
+  opticflow_state.psi = stateGetNedToBodyEulers_f()->psi;
+  opticflow_state.theta = stateGetNedToBodyEulers_f()->theta;
+
+  pthread_mutex_unlock(&opticflow_mutex);
+}
+
+/**
+ * Start the optical flow calculation
+ */
+void obstacle_avoidance_start(void)
+{
+  // Check if we are not already running
+  if(opticflow_calc_thread != 0) {
+    printf("[opticflow_module] Opticflow already started!\n");
+    return;
+  }
   
-  autopilot_data.cnt = 0;
-  autopilot_data.psi = 0;
-  autopilot_data.theta = 0;
-
-  // Create V4L2 device video1 = front camera
-  struct v4l2_device *dev = v4l2_init("/dev/video1", 1280, 720, 4);
-  if (dev == NULL) {
-    printf("Error initialising video\n");
-    return 0;
+  // Create the opticalflow calculation thread
+  opticflow_calc_thread_command = 1;
+  printf("[opticflow_module] Thread Started\n");
+  int rc = pthread_create(&opticflow_calc_thread, NULL, opticflow_module_calc, NULL);
+  if (rc) {
+    printf("[opticflow_module] Could not initialize opticflow thread (return code: %d)\n", rc);
   }
+}
 
+/**
+ * Stop the optical flow calculation
+ */
+void obstacle_avoidance_stop(void)
+{
+  // Stop the capturing
+  v4l2_stop_capture(opticflow_dev);
+  
+  // Stop optic flow thread
+  opticflow_calc_thread_command = 0;
+  printf("[opticflow_module] Thread Closed\n");
+}
+
+/**
+ * The main optical flow calculation thread
+ * This thread passes the images trough the optical flow
+ * calculator based on Lucas Kanade
+ * The thread also performs color counting as backup for optical flow
+ */
+static void *opticflow_module_calc(void *data __attribute__((unused))) 
+{
   // Start the streaming on the V4L2 device
-  if(!v4l2_start_capture(dev)) {
-    printf("Could not start capture\n");
+  if(!v4l2_start_capture(opticflow_dev)) {
+    printf("[opticflow_module] Could not start capture of the camera\n");
     return 0;
   }
 
-  // Video Resizing
-  struct v4l2_img_buf small;
-  small.w = dev->w / VIDEO_DOWNSIZE_FACTOR;
-  small.h = dev->h / VIDEO_DOWNSIZE_FACTOR;
-  small.buf = (uint8_t*)malloc(small.w*small.h*2);
-
-  #ifdef DOWNLINK_VIDEO
-  // Video Compression
-  uint8_t *jpegbuf = (uint8_t*)malloc(dev->w*dev->h*2);
+#ifdef DOWNLINK_VIDEO
+  // Create a new JPEG image
+  struct image_t img_jpeg;
+  image_create(&img_jpeg, opticflow_dev->w, opticflow_dev->h, IMAGE_JPEG);
 
   // Network Transmit
   struct UdpSocket *vsock;
   vsock = udp_socket(VIDEO_SOCK_IP, VIDEO_SOCK_OUT, VIDEO_SOCK_IN, FMS_BROADCAST);
-  #endif
+#endif
 
+  // Create a new downsampled image
+  struct image_t small;
+  image_create(&small, opticflow_dev->w/LK_DOWNSIZE, opticflow_dev->h/LK_DOWNSIZE, IMAGE_YUV422);
+
+  // Set microsleep variable depending on VIDEO_FPS for usleep computation
   #ifdef DOWNLINK_VIDEO
-  // time
   int microsleep = (int)(1000000. / VIDEO_FPS);
   struct timeval last_time;
   gettimeofday(&last_time, NULL);
   #endif
-      
-  // Called by plugin
-  opticflow_plugin_init(dev->w, dev->h, &vision_results);
-  
-  while (computer_vision_thread_command > 0) {
-    // compute usleep to have a more stable frame rate
+
+  /* Main loop of the optical flow calculation */
+  while(opticflow_calc_thread_command > 0) {
     #ifdef DOWNLINK_VIDEO
     struct timeval time;
     gettimeofday(&time, NULL);
@@ -167,86 +230,68 @@ void *computervision_thread_main(void* data)
     last_time = time;
     #endif
 
-    // Wait for a new frame
-    struct v4l2_img_buf *img = v4l2_image_get(dev);
-    //printf("Got a new frame");
-    
-    // Resize: device by VIDEO_DOWNSIZE_FACTOR
-    resize_uyuv(img, &small, VIDEO_DOWNSIZE_FACTOR);
-    
-    color_count = colorfilt_uyvy(&small,&small, 
+    // Try to fetch an image
+    struct image_t img;
+    v4l2_image_get(opticflow_dev, &img);
+
+    // Perform color count
+    color_counted = color_count(&img, color_downsize_factor,
         color_lum_min,color_lum_max,
         color_cb_min,color_cb_max,
         color_cr_min,color_cr_max
-        );    
-    
-    //printf("ColorCount = %d \n", color_count);
-    
-    // 
-    autopilot_data.cnt++;
-    autopilot_data.psi = stateGetNedToBodyEulers_f()->psi;
-    autopilot_data.theta = stateGetNedToBodyEulers_f()->theta;
+        );
 
-    // Run image
-    opticflow_plugin_run(img->buf, &autopilot_data, &vision_results);
-    
-    // print command to test the function
-    //printf(" Vision test %f %f \n", vision_results.dx_sum, vision_results.dy_sum);
-    //printf(" Vision test %f %f \n", autopilot_data.psi, autopilot_data.theta);
-    
-    #ifdef DOWNLINK_VIDEO
-    // JPEG encode the image:
-    uint8_t quality_factor = VIDEO_QUALITY_FACTOR; // From 0 to 99 (99=high)
-    uint8_t dri_jpeg_header = 0;
-    uint32_t image_format = FOUR_TWO_TWO;  // format (in jpeg.h)
-    uint8_t* end = encode_image (small.buf, jpegbuf, quality_factor, image_format, small.w, small.h, dri_jpeg_header);
-    uint32_t size = end-(jpegbuf);
+    // Downsample image
+    image_yuv422_downsample(&img, &small, LK_DOWNSIZE);
 
-/*    printf("Sending an image ...%u\n",size);*/
+    // Copy the state
+    pthread_mutex_lock(&opticflow_mutex);
+    struct opticflow_state_t temp_state;
+    memcpy(&temp_state, &opticflow_state, sizeof(struct opticflow_state_t));
+    pthread_mutex_unlock(&opticflow_mutex);
+
+    // Do the optical flow calculation
+    struct opticflow_result_t temp_result;
+    opticflow_calc_frame(&opticflow, &temp_state, &small, &temp_result);
+
+    // Copy the result if finished
+    pthread_mutex_lock(&opticflow_mutex);
+    memcpy(&opticflow_result, &temp_result, sizeof(struct opticflow_result_t));
+    opticflow_got_result = TRUE;
+    pthread_mutex_unlock(&opticflow_mutex);
+
+    // Send results of color count and opticflow to waypoint input
+    if(color_counted > 3000) {
+	obstacleDetected = 1; 
+	printf("Obstacle detected!!!!!! RUN AWAY!!");
+	sleep(1);
+    }
+
+#ifdef DOWNLINK_VIDEO
+    // JPEG encode the image
+    jpeg_encode_image(&small, &img_jpeg, VIDEO_QUALITY_FACTOR, FALSE);
 
     //Sending rtp frame
     send_rtp_frame(
-        vsock,            // UDP
-        jpegbuf,size,     // JPEG
-        small.w, small.h, // Img Size
-        0,                // Format 422
-        quality_factor,   // Jpeg-Quality
-        dri_jpeg_header,  // DRI Header
-        0                 // 90kHz time increment
-     );
+        vsock,                           // UDP
+        img_jpeg.buf, img_jpeg.buf_size, // JPEG
+        img_jpeg.w, img_jpeg.h,          // Img Size
+        0,                               // Format 422
+        VIDEO_QUALITY_FACTOR,            // Jpeg-Quality
+        0,                               // DRI Header
+        0                                // 90kHz time increment
+    );
     // Extra note: when the time increment is set to 0,
     // it is automaticaly calculated by the send_rtp_frame function
     // based on gettimeofday value. This seems to introduce some lag or jitter.
-    // An other way is to compute the time increment and set the correct value.
-    // It seems that a lower value is also working (when the frame is received
-    // the timestamp is always "late" so the frame is displayed immediately).
-    // Here, we set the time increment to the lowest possible value
-    // (1 = 1/90000 s) which is probably stupid but is actually working.
-    #endif
-  
-  // Free the image
-  v4l2_image_free(dev, img);
+#endif
+
+    // Free the image
+    v4l2_image_free(opticflow_dev, &img);
   }
 
-  printf("Thread Closed\n");
-  v4l2_close(dev);
-  computervision_thread_status = -100;
-  return 0;
+#ifdef DOWNLINK_VIDEO
+  image_free(&img_jpeg);
+#endif
+  image_free(&small);
 }
-
-void obstacle_avoidance_start(void)
-{
-  computer_vision_thread_command = 1;
-  int rc = pthread_create(&computervision_thread, NULL, computervision_thread_main, NULL);
-  if(rc) {
-    printf("ctl_Init: Return code from pthread_create(mot_thread) is %d\n", rc);
-  }
-}
-
-void obstacle_avoidance_stop(void)
-{
-  computer_vision_thread_command = 0;
-}
-
-
-

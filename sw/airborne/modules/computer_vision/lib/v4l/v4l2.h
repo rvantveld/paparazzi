@@ -28,24 +28,21 @@
 #ifndef _CV_LIB_V4L2_H
 #define _CV_LIB_V4L2_H
 
-#include "std.h"
 #include <linux/v4l2-subdev.h>
-#include "../../cv/image.h"
+#include <pthread.h>
+#include <sys/time.h>
+
+#include "std.h"
+#include "vision/image.h"
 
 #define V4L2_IMG_NONE 255  //< There currently no image available
 
-#ifndef _MY_IMAGE_HEADER_
-#define _MY_IMAGE_HEADER_
 /* V4L2 memory mapped image buffer */
 struct v4l2_img_buf {
-  uint8_t idx;            //< The index of the buffer
-  size_t length;          //< The size of the buffer
-  void *buf;              //< Pointer to the memory mapped buffer
-  uint16_t w;              //< The width of the image
-  uint16_t h;              //< The height of the image
+  size_t length;              //< The size of the buffer
+  struct timeval timestamp;   //< The time value of the image
+  void *buf;                  //< Pointer to the memory mapped buffer
 };
-
-#endif
 
 /* V4L2 device */
 struct v4l2_device {
@@ -63,9 +60,9 @@ struct v4l2_device {
 /* External functions */
 bool_t v4l2_init_subdev(char *subdev_name, uint8_t pad, uint8_t which, uint16_t code, uint16_t width, uint16_t height);
 struct v4l2_device *v4l2_init(char *device_name, uint16_t width, uint16_t height, uint8_t buffers_cnt);
-struct v4l2_img_buf *v4l2_image_get(struct v4l2_device *dev);
-struct v4l2_img_buf *v4l2_image_get_nonblock(struct v4l2_device *dev);
-void v4l2_image_free(struct v4l2_device *dev, struct v4l2_img_buf *img_buf);
+void v4l2_image_get(struct v4l2_device *dev, struct image_t *img);
+bool_t v4l2_image_get_nonblock(struct v4l2_device *dev, struct image_t *img);
+void v4l2_image_free(struct v4l2_device *dev, struct image_t *img);
 bool_t v4l2_start_capture(struct v4l2_device *dev);
 bool_t v4l2_stop_capture(struct v4l2_device *dev);
 void v4l2_close(struct v4l2_device *dev);
