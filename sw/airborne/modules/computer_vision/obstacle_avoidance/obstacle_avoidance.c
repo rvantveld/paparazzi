@@ -39,8 +39,12 @@
 // Video
 #include "v4l/v4l2.h"
 
+// Video Downlink options
+#define DOWNLINK_VIDEO 1         //to stream or not to stream
+#define OPTICFLOW_SHOW_CORNERS 1 //to corner or not to corner
+//#define OPTICFLOW_SHOW_FLOW 1    //to flow or not to flow
+
 // Downlink Video
-#define DOWNLINK_VIDEO 1 //to stream or not to stream
 #ifdef DOWNLINK_VIDEO
 #include "encoding/jpeg.h"
 #include "encoding/rtp.h"
@@ -84,7 +88,7 @@
 
 /* Check setting for LK/FAST9 downsampling */
 #ifndef LK_DOWNSIZE
-#define LK_DOWNSIZE 4
+#define LK_DOWNSIZE 2
 #endif
 
 /* The main opticflow variables */
@@ -116,6 +120,7 @@ uint16_t color_counted = 0;
 
 // Set variable to communicate obstacle detection with waypoint navigation
 int obstacleDetected = false;
+int cntr = 0;
 
 /**
  * Initialize the optical flow module for the front camera
@@ -127,11 +132,11 @@ void obstacle_avoidance_init(void)
   opticflow_state.theta = 0;
 
   // Initialize the opticflow calculation
-  opticflow_calc_init(&opticflow, 1280/LK_DOWNSIZE, 720/LK_DOWNSIZE);
+  opticflow_calc_init(&opticflow, 1280/LK_DOWNSIZE, 720/LK_DOWNSIZE); // 
   opticflow_got_result = FALSE;
 
   // Try to initialize the video device
-  opticflow_dev = v4l2_init("/dev/video1", 1280, 720, 10);
+  opticflow_dev = v4l2_init("/dev/video1", 1280, 720, 4);
   if (opticflow_dev == NULL) {
     printf("[opticflow_module] Could not initialize the %s V4L2 device.\n", "/dev/video1");
     return;
@@ -222,6 +227,7 @@ static void *opticflow_module_calc(void *data __attribute__((unused)))
 
   /* Main loop of the optical flow calculation */
   while(opticflow_calc_thread_command > 0) {
+    printf("Loop number %d\n", cntr++);
     #ifdef DOWNLINK_VIDEO
     struct timeval time;
     gettimeofday(&time, NULL);
@@ -259,6 +265,8 @@ static void *opticflow_module_calc(void *data __attribute__((unused)))
     memcpy(&opticflow_result, &temp_result, sizeof(struct opticflow_result_t));
     opticflow_got_result = TRUE;
     pthread_mutex_unlock(&opticflow_mutex);
+
+    printf("Opticflow got result = %d\n", opticflow_got_result);
 
     // Send results of color count and opticflow to waypoint input
     if(color_counted > 3000) {

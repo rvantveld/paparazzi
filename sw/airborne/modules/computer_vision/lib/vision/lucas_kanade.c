@@ -39,8 +39,8 @@
  * Compute the optical flow of several points using the Lucas-Kanade algorithm by Yves Bouguet
  * The initial fixed-point implementation is doen by G. de Croon and is adapted by
  * Freek van Tienen for the implementation in Paparazzi.
- * @param[in] *new_img The newest grayscale image (TODO: fix YUV422 support)
- * @param[in] *old_img The old grayscale image (TODO: fix YUV422 support)
+ * @param[in] *new_img The newest grayscale image
+ * @param[in] *old_img The old grayscale image
  * @param[in] *points Points to start tracking from
  * @param[in/out] points_cnt The amount of points and it returns the amount of points tracked
  * @param[in] half_window_size Half the window size (in both x and y direction) to search inside
