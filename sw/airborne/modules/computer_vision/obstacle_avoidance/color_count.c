@@ -40,8 +40,6 @@ uint16_t color_count(struct image_t *img, uint8_t downsize_factor, uint8_t y_m, 
     
   color_counted = image_yuv422_colorfilt(&small, &small, 
       y_m, y_M, u_m, u_M, v_m, v_M);
-    
-  printf("ColorCount = %d \n", color_counted);
 
   // Free the smaller image
   image_free(&small);

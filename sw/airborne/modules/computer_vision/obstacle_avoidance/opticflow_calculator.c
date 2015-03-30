@@ -40,6 +40,9 @@
 #include "vision/lucas_kanade.h"
 #include "vision/fastRosten.h"
 
+// include polyfit
+#include "math/pprz_polyfit_float.h"
+
 // ARDrone Vertical Camera Parameters
 #define FOV_H 0.67020643276
 #define FOV_W 0.89360857702
@@ -67,6 +70,9 @@
 #ifndef THRESHOLD_VEC
 #define THRESHOLD_VEC 2
 #endif
+
+float x[MAX_TRACK_CORNERS];
+float dx[MAX_TRACK_CORNERS];
 
 /* Functions only used here */
 static uint32_t timeval_diff(struct timeval *starttime, struct timeval *finishtime);
@@ -148,6 +154,16 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
 #if DOWNLINK_VIDEO && OPTICFLOW_SHOW_FLOW
   image_show_flow(img, vectors, result->tracked_cnt, SUBPIXEL_FACTOR);
 #endif
+
+  ///////////////////////////////////////////////////
+  // Own Code //
+  qsort(vectors, result->tracked_cnt, sizeof(struct flow_t), cmp_flow);
+  for (int cnt = 0; cnt < result->tracked_cnt; cnt++){
+    x[result->tracked_cnt] = vectors[result->tracked_cnt].pos.x/1.0;   //Get the x location of points and make into float
+    dx[result->tracked_cnt] = vectors[result->tracked_cnt].flow_x/1.0; //Get the dx of the flow and make into float
+  }    
+  pprz_polyfit_float(x, dx, result->tracked_cnt, 1, result->points);
+  ///////////////////////////////////////////////////
 
   // Get the median flow
   qsort(vectors, result->tracked_cnt, sizeof(struct flow_t), cmp_flow);

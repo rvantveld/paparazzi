@@ -37,7 +37,7 @@
 
 /**
  * Compute the optical flow of several points using the Lucas-Kanade algorithm by Yves Bouguet
- * The initial fixed-point implementation is doen by G. de Croon and is adapted by
+ * The initial fixed-point implementation is done by G. de Croon and is adapted by
  * Freek van Tienen for the implementation in Paparazzi.
  * @param[in] *new_img The newest grayscale image
  * @param[in] *old_img The old grayscale image

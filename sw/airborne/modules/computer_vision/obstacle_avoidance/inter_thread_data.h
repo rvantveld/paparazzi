@@ -35,6 +35,8 @@ struct opticflow_result_t {
   uint16_t corner_cnt;    //< The amount of coners found by FAST9
   uint16_t tracked_cnt;   //< The amount of tracked corners
 
+  float points[2];        //< The coefficients of the linear polyfit
+
   int16_t flow_x;         //< Flow in x direction from the camera (in subpixels)
   int16_t flow_y;         //< Flow in y direction from the camera (in subpixels)
   int16_t flow_der_x;     //< The derotated flow calculation in the x direction (in subpixels)

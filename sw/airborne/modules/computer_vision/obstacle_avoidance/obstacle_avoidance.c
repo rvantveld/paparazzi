@@ -88,7 +88,7 @@
 
 /* Check setting for LK/FAST9 downsampling */
 #ifndef LK_DOWNSIZE
-#define LK_DOWNSIZE 8
+#define LK_DOWNSIZE 4
 #endif
 
 /* The main opticflow variables */
@@ -264,10 +264,12 @@ static void *opticflow_module_calc(void *data __attribute__((unused)))
     opticflow_got_result = TRUE;
     pthread_mutex_unlock(&opticflow_mutex);
 
-    printf("Opticflow got result = %d\n", opticflow_got_result);
+    //printf("Opticflow got result = %d\n", opticflow_got_result);
+    printf("ColorCount = %d \n", color_counted);
+    printf("Results Points = %f ,  %f \n\n", opticflow_result.points[0], opticflow_result.points[1]);
 
     // Send results of color count and opticflow to waypoint input
-    if(color_counted > 3000) {
+    if(color_counted > 3000 || opticflow_result.points[0] < -10000 || opticflow_result.points[0] > 10000) {
 	obstacleDetected = 1; 
 	printf("Obstacle detected!!!!!! RUN AWAY!!");
 	sleep(1);
