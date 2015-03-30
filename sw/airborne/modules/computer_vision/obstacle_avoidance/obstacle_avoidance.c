@@ -296,6 +296,7 @@ static void *opticflow_module_calc(void *data __attribute__((unused)))
 
     // Free the image
     v4l2_image_free(opticflow_dev, &img);
+    //image_free(&img);??
   }
 
 #ifdef DOWNLINK_VIDEO
