@@ -46,6 +46,11 @@
 #define Fx_ARdrone 343.1211
 #define Fy_ARdrone 348.5053
 
+// Video Downlink options
+#define DOWNLINK_VIDEO 1         //to stream or not to stream
+#define OPTICFLOW_SHOW_CORNERS 1 //to corner or not to corner
+#define OPTICFLOW_SHOW_FLOW 1    //to flow or not to flow
+
 // Check if settings are defined
 #ifndef MAX_TRACK_CORNERS
 #define MAX_TRACK_CORNERS 25
