@@ -127,8 +127,9 @@ int obstacleDetected = false;
 void obstacle_avoidance_init(void)
 {
   // Set the opticflow state to 0
-  opticflow_state.psi = 0;
+  opticflow_state.phi = 0;
   opticflow_state.theta = 0;
+  opticflow_state.psi = 0;
 
   // Initialize the opticflow calculation
   opticflow_calc_init(&opticflow, 1280/LK_DOWNSIZE, 720/LK_DOWNSIZE); // 
@@ -150,8 +151,9 @@ void obstacle_avoidance_run(void)
 {
   pthread_mutex_lock(&opticflow_mutex);
   // Send Updated data to thread
-  opticflow_state.psi = stateGetNedToBodyEulers_f()->psi;
+  opticflow_state.phi = stateGetNedToBodyEulers_f()->phi;
   opticflow_state.theta = stateGetNedToBodyEulers_f()->theta;
+  opticflow_state.psi = stateGetNedToBodyEulers_f()->psi;
 
   pthread_mutex_unlock(&opticflow_mutex);
 }
@@ -219,19 +221,19 @@ static void *opticflow_module_calc(void *data __attribute__((unused)))
 
   // Set microsleep variable depending on VIDEO_FPS for usleep computation
   #ifdef DOWNLINK_VIDEO
-  int microsleep = (int)(1000000. / VIDEO_FPS);
-  struct timeval last_time;
-  gettimeofday(&last_time, NULL);
+/*  int microsleep = (int)(1000000. / VIDEO_FPS);*/
+/*  struct timeval last_time;*/
+/*  gettimeofday(&last_time, NULL);*/
   #endif
 
   /* Main loop of the optical flow calculation */
   while(opticflow_calc_thread_command > 0) {
     #ifdef DOWNLINK_VIDEO
-    struct timeval time;
-    gettimeofday(&time, NULL);
-    int dt = (int)(time.tv_sec - last_time.tv_sec) * 1000000 + (int)(time.tv_usec - last_time.tv_usec);
-    if (dt < microsleep) { usleep(microsleep - dt); }
-    last_time = time;
+/*    struct timeval time;*/
+/*    gettimeofday(&time, NULL);*/
+/*    int dt = (int)(time.tv_sec - last_time.tv_sec) * 1000000 + (int)(time.tv_usec - last_time.tv_usec);*/
+/*    if (dt < microsleep) { usleep(microsleep - dt); }*/
+/*    last_time = time;*/
     #endif
 
     // Try to fetch an image
@@ -269,9 +271,9 @@ static void *opticflow_module_calc(void *data __attribute__((unused)))
     printf("Results Points = %f ,  %f \n\n", opticflow_result.points[0], opticflow_result.points[1]);
 
     // Send results of color count and opticflow to waypoint input
-    if(color_counted > 3000 || opticflow_result.points[0] < -10000 || opticflow_result.points[0] > 10000) {
+    if(color_counted > 3000 || opticflow_result.points[1] < -0.05 || opticflow_result.points[1] > 0.05) {
 	obstacleDetected = 1; 
-	printf("Obstacle detected!!!!!! RUN AWAY!!");
+	printf("Obstacle detected!!Run, Forest, Run !!\n");
 	sleep(1);
     }
 

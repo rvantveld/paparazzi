@@ -37,6 +37,7 @@
 struct opticflow_t
 {
   bool_t got_first_img;             //< If we got a image to work with
+  float prev_phi;                   //< Phi from the previous image frame
   float prev_theta;                 //< Theta from the previous image frame
   float prev_psi;                   //< Psi from the previous image frame
   struct image_t small;             //< Current small (downsampled) image frame
@@ -48,5 +49,6 @@ struct opticflow_t
 
 void opticflow_calc_init(struct opticflow_t *opticflow, uint16_t w, uint16_t h);
 void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_t *state, struct image_t *img, struct opticflow_result_t *result);
+float correlation(float *x, float *y, uint16_t n);
 
 #endif /* OPTICFLOW_CALCULATOR_H */
