@@ -50,13 +50,13 @@
 #define Fy_ARdrone 348.5053
 
 // Video Downlink options
-#define DOWNLINK_VIDEO 1         //to stream or not to stream
+//#define DOWNLINK_VIDEO 1         //to stream or not to stream
 #define OPTICFLOW_SHOW_CORNERS 1 //to corner or not to corner
 #define OPTICFLOW_SHOW_FLOW 1    //to flow or not to flow
 
 // Check if settings are defined
 #ifndef MAX_TRACK_CORNERS
-#define MAX_TRACK_CORNERS 25
+#define MAX_TRACK_CORNERS 40
 #endif
 #ifndef HALF_WINDOW_SIZE
 #define HALF_WINDOW_SIZE 5
@@ -169,7 +169,7 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
 
   // Sort the opticflow result based on x-location (Note: the array of structures is sorted, the content of each index is fixed)
   qsort(vectors, result->tracked_cnt, sizeof(struct flow_t), cmp_x);
-  printf("The diff_flow_x = %f and psi = %f\n", diff_flow_x, state->psi);
+  //printf("The diff_flow_x = %f and psi = %f\n", diff_flow_x, state->psi);
   for (int cnt = 0; cnt < result->tracked_cnt; cnt++){
     // Get x-location and flow from the results
     x[cnt] = vectors[cnt].pos.x/1.0;   //Get the x location of points and make into float

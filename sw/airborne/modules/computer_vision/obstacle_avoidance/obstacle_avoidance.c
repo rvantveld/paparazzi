@@ -40,7 +40,7 @@
 #include "v4l/v4l2.h"
 
 // Video Downlink options
-#define DOWNLINK_VIDEO 1         //to stream or not to stream
+//#define DOWNLINK_VIDEO 1         //to stream or not to stream
 #define OPTICFLOW_SHOW_CORNERS 1 //to corner or not to corner
 #define OPTICFLOW_SHOW_FLOW 1    //to flow or not to flow
 
@@ -117,6 +117,8 @@ uint8_t color_downsize_factor = 2; //< Factor used to downsize image in color co
 
 // Set color count state to 0
 uint16_t color_counted = 0;
+int cnt = 0;
+int IMU_init = 0;
 
 // Set variable to communicate obstacle detection with waypoint navigation
 int obstacleDetected = false;
@@ -221,19 +223,24 @@ static void *opticflow_module_calc(void *data __attribute__((unused)))
 
   // Set microsleep variable depending on VIDEO_FPS for usleep computation
   #ifdef DOWNLINK_VIDEO
-/*  int microsleep = (int)(1000000. / VIDEO_FPS);*/
-/*  struct timeval last_time;*/
-/*  gettimeofday(&last_time, NULL);*/
+  int microsleep = (int)(1000000. / VIDEO_FPS);
+  struct timeval last_time;
+  gettimeofday(&last_time, NULL);
   #endif
 
   /* Main loop of the optical flow calculation */
   while(opticflow_calc_thread_command > 0) {
+    if (IMU_init == 0 && opticflow_state.psi != 0){
+    IMU_init = 1;
+    printf("[obstacle_avoidance] IMU initialisation complete");
+    }
+
     #ifdef DOWNLINK_VIDEO
-/*    struct timeval time;*/
-/*    gettimeofday(&time, NULL);*/
-/*    int dt = (int)(time.tv_sec - last_time.tv_sec) * 1000000 + (int)(time.tv_usec - last_time.tv_usec);*/
-/*    if (dt < microsleep) { usleep(microsleep - dt); }*/
-/*    last_time = time;*/
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    int dt = (int)(time.tv_sec - last_time.tv_sec) * 1000000 + (int)(time.tv_usec - last_time.tv_usec);
+    if (dt < microsleep) { usleep(microsleep - dt); }
+    last_time = time;
     #endif
 
     // Try to fetch an image
@@ -267,13 +274,13 @@ static void *opticflow_module_calc(void *data __attribute__((unused)))
     pthread_mutex_unlock(&opticflow_mutex);
 
     //printf("Opticflow got result = %d\n", opticflow_got_result);
-    printf("ColorCount = %d \n", color_counted);
-    printf("Results Points = %f ,  %f \n\n", opticflow_result.points[0], opticflow_result.points[1]);
-
+    //printf("ColorCount = %d \n", color_counted);
+    printf("Results Points = %f \n\n", opticflow_result.points[1]);
+ 
     // Send results of color count and opticflow to waypoint input
-    if(color_counted > 3000 || opticflow_result.points[1] < -0.05 || opticflow_result.points[1] > 0.05) {
+    if(color_counted > 300000 || opticflow_result.points[1] < -0.02 || opticflow_result.points[1] > 0.02) {
 	obstacleDetected = 1; 
-	printf("Obstacle detected!!Run, Forest, Run !!\n");
+	printf("Obstacle detected!!Run, Forest, Run !! Obstacle (%d)\n", cnt++);
 	sleep(1);
     }
 
