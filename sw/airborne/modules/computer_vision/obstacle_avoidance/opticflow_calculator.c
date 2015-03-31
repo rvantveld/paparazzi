@@ -42,6 +42,7 @@
 
 // include polyfit
 #include "math/pprz_polyfit_float.h"
+#include "math/pprz_correlation.h"
 
 // ARDrone Vertical Camera Parameters
 #define FOV_H 0.67020643276
@@ -56,7 +57,7 @@
 
 // Check if settings are defined
 #ifndef MAX_TRACK_CORNERS
-#define MAX_TRACK_CORNERS 40
+#define MAX_TRACK_CORNERS 25
 #endif
 #ifndef HALF_WINDOW_SIZE
 #define HALF_WINDOW_SIZE 5
@@ -74,6 +75,7 @@
 /* Variables only used here */
 float x[MAX_TRACK_CORNERS];
 float dx[MAX_TRACK_CORNERS];
+float xdx_corr;
 
 /* Functions only used here */
 static uint32_t timeval_diff(struct timeval *starttime, struct timeval *finishtime);
@@ -175,6 +177,10 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
     x[cnt] = vectors[cnt].pos.x/1.0;   //Get the x location of points and make into float
     dx[cnt] = vectors[cnt].flow_x/1.0; //Get the dx of the flow and make into float
   }
+
+  // Get correlation between x and dx vectors
+  result->xdx_corr = pprz_correlation(x, dx, result->tracked_cnt);
+  //printf("The correlation of x and dx = %f\n", result->xdx_corr);
 
   for (int cnt = 0; cnt < result->tracked_cnt; cnt++){
     // Flow Derotation

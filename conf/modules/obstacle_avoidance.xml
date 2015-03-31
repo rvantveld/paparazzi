@@ -27,6 +27,7 @@
 
     <file name="pprz_matrix_decomp_float.c" dir="math"/>
     <file name="pprz_polyfit_float.c" dir="math"/>
+    <file name="pprz_correlation.c" dir="math"/>
 
     <define name="modules/computer_vision/lib" type="include"/>
     <define name="math" type="include"/>
