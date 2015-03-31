@@ -21,12 +21,14 @@
 
 /**
  * @file obstacle_avoidance.h
+ * 
+ * Use color counting and opticflow codes to detect obstacles
  */
 
 #ifndef OBSTACLE_AVOIDANCE_H
 #define OBSTACLE_AVOIDANCE_H
 
-// Include opticflow calculator and stabilization loops
+// Include opticflow calculator and stabilization code
 #include "opticflow_calculator.h"
 #include "color_count.h"
 
@@ -36,6 +38,7 @@ extern void obstacle_avoidance_run(void);
 extern void obstacle_avoidance_start(void);
 extern void obstacle_avoidance_stop(void);
 
+// Color count variables
 extern uint8_t color_lum_min;
 extern uint8_t color_lum_max;
 
@@ -44,5 +47,8 @@ extern uint8_t color_cb_max;
 
 extern uint8_t color_cr_min;
 extern uint8_t color_cr_max;
+
+// Variable used to communicate with flight plan (set to 0 by flight plan if detected!)
+extern int obstacleDetected;
 
 #endif /* OBSTACLE_AVOIDANCE_H */

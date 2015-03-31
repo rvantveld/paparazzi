@@ -21,9 +21,9 @@
 
 /**
  * @file modules/computer_vision/opticflow/opticflow_calculator.h
- * @brief Calculate velocity from optic flow.
+ * @brief Calculate linear fit and regression of tracked corners x location and flow.
  *
- * Using images from a vertical camera and IMU sensor data.
+ * Using images from a horizontal camera
  */
 
 #ifndef OPTICFLOW_CALCULATOR_H
@@ -37,8 +37,6 @@
 struct opticflow_t
 {
   bool_t got_first_img;             //< If we got a image to work with
-  float prev_phi;                   //< Phi from the previous image frame
-  float prev_theta;                 //< Theta from the previous image frame
   float prev_psi;                   //< Psi from the previous image frame
   struct image_t small;             //< Current small (downsampled) image frame
   struct image_t img_gray;          //< Current gray image frame
@@ -46,7 +44,7 @@ struct opticflow_t
   struct timeval prev_timestamp;    //< Timestamp of the previous frame, used for FPS calculation
 };
 
-
+// Module functions
 void opticflow_calc_init(struct opticflow_t *opticflow, uint16_t w, uint16_t h);
 void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_t *state, struct image_t *img, struct opticflow_result_t *result);
 float correlation(float *x, float *y, uint16_t n);

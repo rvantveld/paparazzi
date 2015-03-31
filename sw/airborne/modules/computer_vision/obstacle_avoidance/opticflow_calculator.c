@@ -79,7 +79,6 @@ float xdx_corr;
 
 /* Functions only used here */
 static uint32_t timeval_diff(struct timeval *starttime, struct timeval *finishtime);
-static int cmp_flow(const void *a, const void *b);
 static int cmp_x(const void *a, const void *b);
 
 /**
@@ -96,8 +95,6 @@ void opticflow_calc_init(struct opticflow_t *opticflow, uint16_t w, uint16_t h)
 
   /* Set the previous values */
   opticflow->got_first_img = FALSE;
-  opticflow->prev_phi = 0.0;
-  opticflow->prev_theta = 0.0;
   opticflow->prev_psi = 0.0;
 }
 
@@ -164,9 +161,6 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
   // Own Code //
   // State computatations (q and r from theta and psi)
   float diff_flow_x = (state->psi - opticflow->prev_psi) * img->w / FOV_W;
-  float diff_flow_y = (state->theta - opticflow->prev_theta) * img->h / FOV_H;
-  opticflow->prev_phi = state->phi;
-  opticflow->prev_theta = state->theta;
   opticflow->prev_psi = state->psi;
 
   // Sort the opticflow result based on x-location (Note: the array of structures is sorted, the content of each index is fixed)
@@ -195,40 +189,6 @@ void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_
   pprz_polyfit_float(x, dx, result->tracked_cnt, 1, result->points);
   ///////////////////////////////////////////////////
 
-/*  // Get the median flow*/
-/*  qsort(vectors, result->tracked_cnt, sizeof(struct flow_t), cmp_flow);*/
-/*  if(result->tracked_cnt == 0) {*/
-/*    // We got no flow*/
-/*    result->flow_x = 0;*/
-/*    result->flow_y = 0;*/
-/*  } else if(result->tracked_cnt > 3) {*/
-/*    // Take the average of the 3 median points*/
-/*    result->flow_x = vectors[result->tracked_cnt/2 -1].flow_x;*/
-/*    result->flow_y = vectors[result->tracked_cnt/2 -1].flow_y;*/
-/*    result->flow_x += vectors[result->tracked_cnt/2].flow_x;*/
-/*    result->flow_y += vectors[result->tracked_cnt/2].flow_y;*/
-/*    result->flow_x += vectors[result->tracked_cnt/2 +1].flow_x;*/
-/*    result->flow_y += vectors[result->tracked_cnt/2 +1].flow_y;*/
-/*    result->flow_x /= 3;*/
-/*    result->flow_y /= 3;*/
-/*  } else {*/
-/*    // Take the median point*/
-/*    result->flow_x = vectors[result->tracked_cnt/2].flow_x;*/
-/*    result->flow_y = vectors[result->tracked_cnt/2].flow_y;*/
-/*  }*/
-
-/*  // Flow Derotation*/
-/*  float diff_flow_x = (state->psi - opticflow->prev_psi) * img->w / FOV_W;*/
-/*  float diff_flow_y = (state->theta - opticflow->prev_theta) * img->h / FOV_H;*/
-/*  result->flow_der_x = result->flow_x - diff_flow_x * SUBPIXEL_FACTOR;*/
-/*  result->flow_der_y = result->flow_y - diff_flow_y * SUBPIXEL_FACTOR;*/
-/*  opticflow->prev_psi = state->psi;*/
-/*  opticflow->prev_theta = state->theta;*/
-
-/*  // Velocity calculation*/
-/*  result->vel_x = -result->flow_der_x * result->fps / SUBPIXEL_FACTOR * img->w / Fx_ARdrone;*/
-/*  result->vel_y =  result->flow_der_y * result->fps / SUBPIXEL_FACTOR * img->h / Fy_ARdrone;*/
-
   // *************************************************************************************
   // Next Loop Preparation
   // *************************************************************************************
@@ -249,20 +209,6 @@ static uint32_t timeval_diff(struct timeval *starttime, struct timeval *finishti
   msec=(finishtime->tv_sec-starttime->tv_sec)*1000;
   msec+=(finishtime->tv_usec-starttime->tv_usec)/1000;
   return msec;
-}
-
-/**
- * Compare two flow vectors based on flow distance
- * Used for sorting.
- * @param[in] *a The first flow vector (should be vect flow_t)
- * @param[in] *b The second flow vector (should be vect flow_t)
- * @return Negative if b has more flow than a, 0 if the same and positive if a has more flow than b
- */
-static int cmp_flow(const void *a, const void *b)
-{
-  const struct flow_t *a_p = (const struct flow_t *)a;
-  const struct flow_t *b_p = (const struct flow_t *)b;
-  return (a_p->flow_x*a_p->flow_x + a_p->flow_y*a_p->flow_y) - (b_p->flow_x*b_p->flow_x + b_p->flow_y*b_p->flow_y);
 }
 
 /**

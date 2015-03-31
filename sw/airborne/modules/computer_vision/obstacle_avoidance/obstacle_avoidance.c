@@ -20,7 +20,9 @@
  */
 
 /**
- * @file obstacle_avoidance.c
+ * @file obstacle_avoidance.h
+ * 
+ * Use color counting and opticflow codes to detect obstacles
  */
 
 // Own header
@@ -115,25 +117,23 @@ uint8_t color_cr_min  = 160;
 uint8_t color_cr_max  = 240;
 uint8_t color_downsize_factor = 2; //< Factor used to downsize image in color count function
 
-// Set color count state to 0
+// Set variable to communicate obstacle detection with waypoint navigation
+int obstacleDetected = 0;
+
+// Initialise module variables to 0
 uint16_t color_counted = 0;
 int cnt = 0;
 int IMU_init = 0;
-
-// Set variable to communicate obstacle detection with waypoint navigation
-int obstacleDetected = false;
 
 /**
  * Initialize the optical flow module for the front camera
  */
 void obstacle_avoidance_init(void)
 {
-  // Set the opticflow state to 0
-  opticflow_state.phi = 0;
-  opticflow_state.theta = 0;
+  // Initialise the module variables to 0
   opticflow_state.psi = 0;
 
-  // Initialize the opticflow calculation
+  // Initialize the opticflow calculation (for downsized image)
   opticflow_calc_init(&opticflow, 1280/LK_DOWNSIZE, 720/LK_DOWNSIZE); // 
   opticflow_got_result = FALSE;
 
@@ -153,8 +153,6 @@ void obstacle_avoidance_run(void)
 {
   pthread_mutex_lock(&opticflow_mutex);
   // Send Updated data to thread
-  opticflow_state.phi = stateGetNedToBodyEulers_f()->phi;
-  opticflow_state.theta = stateGetNedToBodyEulers_f()->theta;
   opticflow_state.psi = stateGetNedToBodyEulers_f()->psi;
 
   pthread_mutex_unlock(&opticflow_mutex);

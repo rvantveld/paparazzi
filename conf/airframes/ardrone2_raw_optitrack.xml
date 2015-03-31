@@ -33,7 +33,8 @@
       <define name="FOLLOW_WAYPOINT_ID" value="WP_p1"/>
       <define name="FOLLOW_OFFSET_Z" value="2.0"/>
     </load>
-    <load name="obstacle_avoidance.xml"/>
+    <!-- Added own obstacle_avoidance module /-->
+    <load name="obstacle_avoidance.xml"/> 
   </modules>
 
   <commands>
