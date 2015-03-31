@@ -44,6 +44,10 @@
 #include "firmwares/rotorcraft/stabilization/stabilization_rate.h"
 #include "firmwares/rotorcraft/stabilization/stabilization_attitude.h"
 
+//********** include obstacle avoidance
+#include "modules/computer_vision/obstacle_avoidance/obstacle_avoidance.h"
+//********** end include of obstacle avoidance
+
 #include "generated/settings.h"
 
 #ifdef POWER_SWITCH_GPIO
@@ -309,11 +313,76 @@ void autopilot_init(void)
   register_periodic_telemetry(DefaultPeriodic, "ROTORCRAFT_RADIO_CONTROL", send_rotorcraft_rc);
 #endif
 }
+//************** Following function is also custom
+int counterfar = 0;
+void randomizeWayPoint(void)
+{
+	//Create random coordinates for a new waypoint within a radius of 4 meters
+	//srand ( time(NULL) );
+	int random_u = rand() % 10;
+	int random_v = rand() % 10;
+	int x_r = -358 + (random_u * -41) + (random_v * 77);
+	int y_r = -307 + (random_u * 69) + (random_v * 46);
+	int z_r = 250;
+	int xcurrent = waypoints[5].x;
+	int ycurrent = waypoints[5].y;
+	//int x_r = (int)x_r1; //(rand() % 256) * 4 - 512;
+	//int y_r = (rand() % 256) * 4 - 512;
+	//float x_r2 = 0.52532198881*x_r1 + 0.85090352453*y_r1;
+	//float y_r2 = -0.85090352453*x_r1 + 0.52532198881*y_r1;
+	//int x_r = (int)x_r2;
+	//int y_r = (int)y_r2;
+	//int z_r = (rand() % 256) +1;
+	float rc = ((float)(ycurrent - y_r) / (float)(xcurrent - x_r));
+	if(((float)y_r / (float)x_r) > rc + 1 || ((float)y_r / (float)x_r) < rc - 1){
+		
+		if(counterfar < 10){
 
-
+			if((xcurrent-x_r)*(xcurrent-x_r)+(ycurrent-y_r)*(ycurrent-y_r) > 512*512){
+				// Assign new waypoint coordinates to p1*/
+		
+	    			waypoints[5].x = x_r;
+				waypoints[5].y = y_r;
+				waypoints[5].z = z_r; // This is for changing altitudes
+				nav_set_heading_towards_waypoint(5);
+				printf("New waypoint x: %d %d\n", x_r, y_r);
+				printf("Distance: %d\n", (xcurrent-x_r)*(xcurrent-x_r)+(ycurrent-y_r)*(ycurrent-y_r));
+				counterfar = 0;
+			}
+			else {
+			counterfar++;
+			randomizeWayPoint();
+			}
+		}
+		else{
+		waypoints[5].x = x_r;
+		waypoints[5].y = y_r;
+		waypoints[5].z = z_r; // This is for changing altitudes
+		nav_set_heading_towards_waypoint(5);
+		printf("New waypoint x: %d %d\n", x_r, y_r);
+		printf("Distance: %d\n", (xcurrent-x_r)*(xcurrent-x_r)+(ycurrent-y_r)*(ycurrent-y_r));
+		}
+	}
+	else randomizeWayPoint();
+}
+//************ END custom
 #define NAV_PRESCALER (PERIODIC_FREQUENCY / NAV_FREQ)
 void autopilot_periodic(void)
 {
+
+  //************* START CUSTOM STUFF *********
+  
+  if(obstacleDetected){
+	// Obstacle is detected, go somewhere else and set the obstacle detected var to 0
+	randomizeWayPoint();
+	obstacleDetected = 0;
+  }else
+  {
+	// If no obstacle is detected, fly somewhere randomly
+	RunOnceEvery(1024, randomizeWayPoint());
+  }
+	//if(getObstacleDetected() == 1) randomizeWayPoint();
+  //************* END CUSTOM STUFF **********
 
   RunOnceEvery(NAV_PRESCALER, compute_dist2_to_home());
 
