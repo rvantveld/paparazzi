@@ -122,7 +122,6 @@ int obstacleDetected = 0;
 
 // Initialise module variables to 0
 uint16_t color_counted = 0;
-int cnt = 0;
 int IMU_init = 0;
 
 /**
@@ -273,14 +272,19 @@ static void *opticflow_module_calc(void *data __attribute__((unused)))
 
     //printf("Opticflow got result = %d\n", opticflow_got_result);
     //printf("ColorCount = %d \n", color_counted);
-    printf("Results Points = %f with corr %f \n\n", opticflow_result.points[1], opticflow_result.xdx_corr);
  
     // Send results of color count and opticflow to waypoint input
-    if(color_counted > 3000 || (opticflow_result.points[1] < -0.01 && opticflow_result.xdx_corr > 0.6) || (opticflow_result.points[1] > 0.01 && opticflow_result.xdx_corr > 0.6)) {
-	obstacleDetected = 1; 
-	printf("Obstacle detected!!Run, Forest, Run !! Obstacle (%d)\n", cnt++);
-	sleep(1);
-    }
+    if ((opticflow_result.points[1] < -0.01 && opticflow_result.xdx_corr > 0.6) || (opticflow_result.points[1] > 0.01 && opticflow_result.xdx_corr > 0.6)) {
+       obstacleDetected = 1; 
+       printf("Flow detected ");
+       printf("Results Points = %f with corr %f \n\n", opticflow_result.points[1], opticflow_result.xdx_corr);
+       sleep(1);
+    } else {if(color_counted > 300000) {
+       obstacleDetected = 1;
+       printf("Color detected ");
+       printf("Colorcount = %d\n\n", color_counted);
+       sleep(1);
+    }}
 
 #ifdef DOWNLINK_VIDEO
     // JPEG encode the image

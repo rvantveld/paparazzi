@@ -74,7 +74,7 @@ extern bool_t autopilot_detect_ground_once;
 
 extern uint16_t autopilot_flight_time;
 
-int counterfar;
+//int counterfar;
 /** Default RC mode.
  */
 #ifndef MODE_MANUAL

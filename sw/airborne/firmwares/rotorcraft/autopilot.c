@@ -321,9 +321,9 @@ void randomizeWayPoint(void)
 	//srand ( time(NULL) );
 	int random_u = rand() % 10;
 	int random_v = rand() % 10;
-	int x_r = -358 + (random_u * -41) + (random_v * 77);
-	int y_r = -307 + (random_u * 69) + (random_v * 46);
-	int z_r = 250;
+	int x_r = -160 + (random_u * 152) + (random_v * -94);
+	int y_r = -1140 + (random_u * 90) + (random_v * 146);
+	int z_r = 380;
 	int xcurrent = waypoints[5].x;
 	int ycurrent = waypoints[5].y;
 	//int x_r = (int)x_r1; //(rand() % 256) * 4 - 512;
@@ -376,10 +376,10 @@ void autopilot_periodic(void)
 	// Obstacle is detected, go somewhere else and set the obstacle detected var to 0
 	randomizeWayPoint();
 	obstacleDetected = 0;
-  }else
-  {
+  }else 
+ {
 	// If no obstacle is detected, fly somewhere randomly
-	RunOnceEvery(1024, randomizeWayPoint());
+	RunOnceEvery(2000, randomizeWayPoint());
   }
 	//if(getObstacleDetected() == 1) randomizeWayPoint();
   //************* END CUSTOM STUFF **********
