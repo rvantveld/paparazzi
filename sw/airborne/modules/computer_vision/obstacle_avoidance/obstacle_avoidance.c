@@ -274,12 +274,12 @@ static void *opticflow_module_calc(void *data __attribute__((unused)))
     //printf("ColorCount = %d \n", color_counted);
  
     // Send results of color count and opticflow to waypoint input
-    if ((opticflow_result.points[1] < -0.01 && opticflow_result.xdx_corr > 0.6) || (opticflow_result.points[1] > 0.01 && opticflow_result.xdx_corr > 0.6)) {
+    if ((opticflow_result.points[1] < -0.008 && opticflow_result.xdx_corr > 0.6) || (opticflow_result.points[1] > 0.008 && opticflow_result.xdx_corr > 0.6)) {
        obstacleDetected = 1; 
        printf("Flow detected ");
        printf("Results Points = %f with corr %f \n\n", opticflow_result.points[1], opticflow_result.xdx_corr);
        sleep(1);
-    } else {if(color_counted > 300000) {
+    } else {if(color_counted > 8000) {
        obstacleDetected = 1;
        printf("Color detected ");
        printf("Colorcount = %d\n\n", color_counted);

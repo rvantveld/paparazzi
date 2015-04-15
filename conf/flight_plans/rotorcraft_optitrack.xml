@@ -6,6 +6,7 @@
 
   </header>
   <waypoints>
+    <!-- Altered the locations of the waypoints slightly such that p1,p2,p3,p4 are on the corners of the cyberzoo testing ground and home to be on the starting location-->
     <waypoint x="0" y="0" name="HOME"/>
     <waypoint name="CLIMB" x="-0.7" y="1.05"/>
     <waypoint name="STDBY" x="-2.0" y="-5.0"/>
@@ -48,6 +49,7 @@
       <call fun="NavResurrect()"/>
       <attitude pitch="0" roll="0" throttle="0" vmode="throttle" until="FALSE"/>
     </block>
+    <!-- Changed the deroute from the take off to stay on waypoint p1 -->
     <block name="Takeoff" strip_button="Takeoff" strip_icon="takeoff.png">
       <exception cond="stateGetPositionEnu_f()->z > 1.0" deroute="stay_p1"/>
       <call fun="NavSetWaypointHere(WP_CLIMB)"/>

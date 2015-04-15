@@ -313,76 +313,84 @@ void autopilot_init(void)
   register_periodic_telemetry(DefaultPeriodic, "ROTORCRAFT_RADIO_CONTROL", send_rotorcraft_rc);
 #endif
 }
-//************** Following function is also custom
+/* Create a random waypoint within a square surface area */
 int counterfar = 0;
 void randomizeWayPoint(void)
 {
-	//Create random coordinates for a new waypoint within a radius of 4 meters
-	//srand ( time(NULL) );
+	//Create two vector coordinates with random  values between 0 and 10
 	int random_u = rand() % 10;
 	int random_v = rand() % 10;
+	
+	//Create new waypoint coordinates with the above defined vector
 	int x_r = -160 + (random_u * 152) + (random_v * -94);
 	int y_r = -1140 + (random_u * 90) + (random_v * 146);
 	int z_r = 380;
+	
+	//Store the current waypoint location of P1 in variables
 	int xcurrent = waypoints[5].x;
 	int ycurrent = waypoints[5].y;
-	//int x_r = (int)x_r1; //(rand() % 256) * 4 - 512;
-	//int y_r = (rand() % 256) * 4 - 512;
-	//float x_r2 = 0.52532198881*x_r1 + 0.85090352453*y_r1;
-	//float y_r2 = -0.85090352453*x_r1 + 0.52532198881*y_r1;
-	//int x_r = (int)x_r2;
-	//int y_r = (int)y_r2;
-	//int z_r = (rand() % 256) +1;
+	
+	//Find the direction of the new waypoint relative to the current
 	float rc = ((float)(ycurrent - y_r) / (float)(xcurrent - x_r));
+	
+	//Check if new waypoint is in a different quadrant relative to the current
 	if(((float)y_r / (float)x_r) > rc + 1 || ((float)y_r / (float)x_r) < rc - 1){
-		
+		//Check how many times attempted to find a new waypoint
 		if(counterfar < 10){
-
+			//Check if the new waypoint is outside a 2 meter radius from the current one
 			if((xcurrent-x_r)*(xcurrent-x_r)+(ycurrent-y_r)*(ycurrent-y_r) > 512*512){
-				// Assign new waypoint coordinates to p1*/
-		
+				//Assign new waypoint coordinates to waypoint p1
 	    			waypoints[5].x = x_r;
 				waypoints[5].y = y_r;
-				waypoints[5].z = z_r; // This is for changing altitudes
+				waypoints[5].z = z_r;
+				
+				//Let the UAV face its destination
 				nav_set_heading_towards_waypoint(5);
+				
+				//Print out result for testing
 				printf("New waypoint x: %d %d\n", x_r, y_r);
 				printf("Distance: %d\n", (xcurrent-x_r)*(xcurrent-x_r)+(ycurrent-y_r)*(ycurrent-y_r));
+				
+				//Set attempt counter to 0
 				counterfar = 0;
 			}
 			else {
-			counterfar++;
-			randomizeWayPoint();
+			  //New waypoint coordinates are within 2 meters of the current, try finding a new waypoint
+			  counterfar++;
+			  randomizeWayPoint();
 			}
 		}
 		else{
+		  //System has tried 10 times to find a new waypoint with no result, in order to avoid hovering forever, just go to the last determined waypoint
 		waypoints[5].x = x_r;
 		waypoints[5].y = y_r;
-		waypoints[5].z = z_r; // This is for changing altitudes
+		waypoints[5].z = z_r;
+		
+		//Set heading towards the new waypoint
 		nav_set_heading_towards_waypoint(5);
+		
+		//Print results for testing
 		printf("New waypoint x: %d %d\n", x_r, y_r);
 		printf("Distance: %d\n", (xcurrent-x_r)*(xcurrent-x_r)+(ycurrent-y_r)*(ycurrent-y_r));
 		}
-	}
+	} //Waypoint is in the same direction as the current one, find a new waypoint
 	else randomizeWayPoint();
 }
-//************ END custom
+
 #define NAV_PRESCALER (PERIODIC_FREQUENCY / NAV_FREQ)
 void autopilot_periodic(void)
 {
-
-  //************* START CUSTOM STUFF *********
-  
+  //The following if statement acts on obstacles detected
   if(obstacleDetected){
-	// Obstacle is detected, go somewhere else and set the obstacle detected var to 0
+	// Obstacle is detected, run the randomize waypoint function and set the obstacle detected var to 0
 	randomizeWayPoint();
 	obstacleDetected = 0;
   }else 
- {
-	// If no obstacle is detected, fly somewhere randomly
-	RunOnceEvery(2000, randomizeWayPoint());
+  {
+	//No obstacle is detected, but every 6 seconds, set a new waypoint to avoid hovering if waypoint is reached without detecting an obstacle
+	RunOnceEvery(3072, randomizeWayPoint());
   }
-	//if(getObstacleDetected() == 1) randomizeWayPoint();
-  //************* END CUSTOM STUFF **********
+  
 
   RunOnceEvery(NAV_PRESCALER, compute_dist2_to_home());
 
