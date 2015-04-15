@@ -20,10 +20,12 @@
  */
 
 /**
- * @file modules/computer_vision/opticflow/opticflow_calculator.c
- * @brief Estimate velocity from optic flow.
+ * @file modules/computer_vision/obstalce_avoidance/opticflow_calculator.h
+ * @brief Calculate linear fit of horizontal optic flow
  *
- * Using images from a vertical camera and IMU sensor data.
+ * Optic flow is determined using horizontal camera
+ * Horizontal optic flow is used to make linear fit and compute linear correlation
+ * Difference in yaw angle between frames is used for flow derotation
  */
 
 #include "std.h"
@@ -40,20 +42,20 @@
 #include "vision/lucas_kanade.h"
 #include "vision/fastRosten.h"
 
-// include polyfit
+// include polyfit and correlation math
 #include "math/pprz_polyfit_float.h"
 #include "math/pprz_correlation.h"
 
-// ARDrone Vertical Camera Parameters
+// ARDrone Horizontal Camera Parameters
 #define FOV_H 0.67020643276
 #define FOV_W 0.89360857702
 #define Fx_ARdrone 343.1211
 #define Fy_ARdrone 348.5053
 
 // Video Downlink options
-//#define DOWNLINK_VIDEO 1         //to stream or not to stream
-#define OPTICFLOW_SHOW_CORNERS 1 //to corner or not to corner
-#define OPTICFLOW_SHOW_FLOW 1    //to flow or not to flow
+#define DOWNLINK_VIDEO 1         //Stream video if defined => comment to avoid streaming
+#define OPTICFLOW_SHOW_CORNERS 1 //Show corners in stream if defined => comment to avoid showing corners
+#define OPTICFLOW_SHOW_FLOW 1    //Show flow vectors in stream if defined => comment to avoid showing flow vectors
 
 // Check if settings are defined
 #ifndef MAX_TRACK_CORNERS
@@ -84,8 +86,8 @@ static int cmp_x(const void *a, const void *b);
 /**
  * Initialize the opticflow calculator
  * @param[out] *opticflow The new optical flow calculator
- * @param[in] *w The image width
- * @param[in] *h The image height
+ * @param[in]  *w The image width
+ * @param[in]  *h The image height
  */
 void opticflow_calc_init(struct opticflow_t *opticflow, uint16_t w, uint16_t h)
 {

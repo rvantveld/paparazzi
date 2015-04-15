@@ -20,10 +20,12 @@
  */
 
 /**
- * @file modules/computer_vision/opticflow/opticflow_calculator.h
- * @brief Calculate linear fit and regression of tracked corners x location and flow.
+ * @file modules/computer_vision/obstalce_avoidance/opticflow_calculator.h
+ * @brief Calculate linear fit of horizontal optic flow
  *
- * Using images from a horizontal camera
+ * Optic flow is determined using horizontal camera
+ * Horizontal optic flow is used to make linear fit and compute linear correlation
+ * Difference in yaw angle between frames is used for flow derotation
  */
 
 #ifndef OPTICFLOW_CALCULATOR_H
@@ -47,6 +49,5 @@ struct opticflow_t
 // Module functions
 void opticflow_calc_init(struct opticflow_t *opticflow, uint16_t w, uint16_t h);
 void opticflow_calc_frame(struct opticflow_t *opticflow, struct opticflow_state_t *state, struct image_t *img, struct opticflow_result_t *result);
-float correlation(float *x, float *y, uint16_t n);
 
 #endif /* OPTICFLOW_CALCULATOR_H */

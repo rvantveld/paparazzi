@@ -19,6 +19,9 @@
  */
 
 /**
+ * @file math/pprz_correlation.h
+ * @brief Compute correlation.
+ *
  * Function to compute the Pearson Product-Moment correlation coefficient of two vectors
  * http://en.wikipedia.org/wiki/Pearson_product-moment_correlation_coefficient
  * In statistics, the Pearson product-moment correlation coefficient is a measure of the     
@@ -28,7 +31,7 @@
  * the degree of linear dependence between two variables. It was developed by Karl Pearson 
  * from a related idea introduced by Francis Galton in the 1880s.
  *
- * Compute the correlation of two flow vectors (for all tracked corners)
+ * Compute the correlation of two vectors
  * @param[in] *x    Pointer to the first vector (float)
  * @param[in] *y    Pointer to the second vector (float)
  * @param[in]  n    The length of both vectors (uint)
@@ -41,6 +44,7 @@
 #include <math.h>
 
 float pprz_correlation(float *x, float *y, unsigned int n){
+        /* Declare variables */
         float xy[n], xsquare[n], ysquare[n];
         float xsum, ysum, xysum, xsqr_sum, ysqr_sum;
         float corr, num, den;

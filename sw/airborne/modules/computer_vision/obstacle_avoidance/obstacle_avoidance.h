@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015
+ * Copyright (C) 2012-2015 Group 1 AE4317 TU Delft
  *
  * This file is part of Paparazzi.
  *
@@ -20,15 +20,19 @@
  */
 
 /**
- * @file obstacle_avoidance.h
- * 
- * Use color counting and opticflow codes to detect obstacles
+ * @file modules/computer_vision/obstacle_avoidance/obstacle_avoidance.h
+ * @brief Detect obstacles using opticflow and color counting
+ *
+ * Obstacle detection module using opticflow and color counting
+ * The obstacle is detected if a certain threshold is reached
+ * for either opticflow or color count
+ * Result is stored in variable to be used by autopilot
  */
 
 #ifndef OBSTACLE_AVOIDANCE_H
 #define OBSTACLE_AVOIDANCE_H
 
-// Include opticflow calculator and stabilization code
+// Include opticflow calculator and color count code
 #include "opticflow_calculator.h"
 #include "color_count.h"
 

@@ -19,12 +19,11 @@
  */
 
 /**
- * @file modules/computer_vision/opticflow/inter_thread_data.h
+ * @file modules/computer_vision/obstacle_avoidance/inter_thread_data.h
  * @brief Inter-thread data structures.
  *
  * Data structures used to for inter-thread communication via Unix Domain sockets.
  */
-
 
 #ifndef _INTER_THREAD_DATA_H
 #define _INTER_THREAD_DATA_H

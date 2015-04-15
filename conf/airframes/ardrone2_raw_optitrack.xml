@@ -205,8 +205,8 @@
     <!-- reference model -->
     <define name="REF_OMEGA" value="RadOfDeg(67.)"/>
     <define name="REF_ZETA" value="0.85"/>
-    <define name="REF_MAX_ACCEL" value="0.5"/>
-    <define name="REF_MAX_SPEED" value="1.5"/>
+    <define name="REF_MAX_ACCEL" value="0.5"/> <!-- Max acceleration tuned for competition /-->
+    <define name="REF_MAX_SPEED" value="1.5"/> <!-- Max speed tuned for competition /-->
 
     <!-- gains -->
     <define name="PGAIN" value="116"/>

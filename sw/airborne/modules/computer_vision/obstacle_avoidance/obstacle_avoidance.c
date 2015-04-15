@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015
+ * Copyright (C) 2012-2015 Group 1 AE4317 TU Delft
  *
  * This file is part of Paparazzi.
  *
@@ -20,9 +20,13 @@
  */
 
 /**
- * @file obstacle_avoidance.h
- * 
- * Use color counting and opticflow codes to detect obstacles
+ * @file modules/computer_vision/obstacle_avoidance/obstacle_avoidance.h
+ * @brief Detect obstacles using opticflow and color counting
+ *
+ * Obstacle detection module using opticflow and color counting
+ * The obstacle is detected if a certain threshold is reached
+ * for either opticflow or color count
+ * Result is stored in variable to be used by autopilot
  */
 
 // Own header
@@ -42,9 +46,9 @@
 #include "v4l/v4l2.h"
 
 // Video Downlink options
-//#define DOWNLINK_VIDEO 1         //to stream or not to stream
-#define OPTICFLOW_SHOW_CORNERS 1 //to corner or not to corner
-#define OPTICFLOW_SHOW_FLOW 1    //to flow or not to flow
+#define DOWNLINK_VIDEO 1         //Stream video if defined => comment to avoid streaming
+#define OPTICFLOW_SHOW_CORNERS 1 //Show corners in stream if defined => comment to avoid showing corners
+#define OPTICFLOW_SHOW_FLOW 1    //Show flow vectors in stream if defined => comment to avoid showing flow vectors
 
 // Downlink Video
 #ifdef DOWNLINK_VIDEO
@@ -139,7 +143,7 @@ void obstacle_avoidance_init(void)
   // Try to initialize the video device
   opticflow_dev = v4l2_init("/dev/video1", 1280, 720, 10);
   if (opticflow_dev == NULL) {
-    printf("[opticflow_module] Could not initialize the %s V4L2 device.\n", "/dev/video1");
+    printf("[obstacle_avoidance] Could not initialize the %s V4L2 device.\n", "/dev/video1");
     return;
   }
 }
@@ -164,16 +168,16 @@ void obstacle_avoidance_start(void)
 {
   // Check if we are not already running
   if(opticflow_calc_thread != 0) {
-    printf("[opticflow_module] Opticflow already started!\n");
+    printf("[obstacle_avoidance] Opticflow already started!\n");
     return;
   }
   
   // Create the opticalflow calculation thread
   opticflow_calc_thread_command = 1;
-  printf("[opticflow_module] Thread Started\n");
+  printf("[obstacle_avoidance] Thread Started\n");
   int rc = pthread_create(&opticflow_calc_thread, NULL, opticflow_module_calc, NULL);
   if (rc) {
-    printf("[opticflow_module] Could not initialize opticflow thread (return code: %d)\n", rc);
+    printf("[obstacle_avoidance] Could not initialize opticflow thread (return code: %d)\n", rc);
   }
 }
 
@@ -187,7 +191,7 @@ void obstacle_avoidance_stop(void)
   
   // Stop optic flow thread
   opticflow_calc_thread_command = 0;
-  printf("[opticflow_module] Thread Closed\n");
+  printf("[obstacle_avoidance] Thread Closed\n");
 }
 
 /**
@@ -200,7 +204,7 @@ static void *opticflow_module_calc(void *data __attribute__((unused)))
 {
   // Start the streaming on the V4L2 device
   if(!v4l2_start_capture(opticflow_dev)) {
-    printf("[opticflow_module] Could not start capture of the camera\n");
+    printf("[obstacle_avoidance] Could not start capture of the camera\n");
     return 0;
   }
 
@@ -269,20 +273,18 @@ static void *opticflow_module_calc(void *data __attribute__((unused)))
     memcpy(&opticflow_result, &temp_result, sizeof(struct opticflow_result_t));
     opticflow_got_result = TRUE;
     pthread_mutex_unlock(&opticflow_mutex);
-
-    //printf("Opticflow got result = %d\n", opticflow_got_result);
-    //printf("ColorCount = %d \n", color_counted);
  
-    // Send results of color count and opticflow to waypoint input
+    // Send results of color count and opticflow to waypoint input 
+    // Check optic flow first, only check color count if optic flow has not detected object
     if ((opticflow_result.points[1] < -0.008 && opticflow_result.xdx_corr > 0.6) || (opticflow_result.points[1] > 0.008 && opticflow_result.xdx_corr > 0.6)) {
        obstacleDetected = 1; 
-       printf("Flow detected ");
-       printf("Results Points = %f with corr %f \n\n", opticflow_result.points[1], opticflow_result.xdx_corr);
+       //printf("Flow detected ");
+       //printf("Results Points = %f with corr %f \n\n", opticflow_result.points[1], opticflow_result.xdx_corr);
        sleep(1);
     } else {if(color_counted > 8000) {
        obstacleDetected = 1;
-       printf("Color detected ");
-       printf("Colorcount = %d\n\n", color_counted);
+       //printf("Color detected ");
+       //printf("Colorcount = %d\n\n", color_counted);
        sleep(1);
     }}
 
